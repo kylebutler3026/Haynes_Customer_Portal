@@ -8,6 +8,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         .icon-search { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E") center/contain no-repeat; }
         .icon-phone { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z'/%3E%3C/svg%3E") center/contain no-repeat; }
@@ -23,15 +24,21 @@
         .icon-lock { display: inline-block; width: 20px; height: 20px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'/%3E%3C/svg%3E") center/contain no-repeat; }
         .icon-x { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 18L18 6M6 6l12 12'/%3E%3C/svg%3E") center/contain no-repeat; }
         .icon-logout { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1'/%3E%3C/svg%3E") center/contain no-repeat; }
+        .icon-sync { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'/%3E%3C/svg%3E") center/contain no-repeat; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useCallback } = React;
 
-        // Icon components as simple div elements with CSS classes
+        // Initialize Supabase client
+        const supabaseUrl = 'https://cpddhpwzgkivzfkqlbop.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwZGRocHd6Z2tpdnpma3FsYm9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NjE0MzEsImV4cCI6MjA3MjQzNzQzMX0.DQPbGH8fCnCeg208XPlJStwCltpLc77DrRKUlDJE1V0';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Icon components
         const Icon = ({ type, className = "h-4 w-4" }) => {
             return React.createElement('div', { 
                 className: `icon-${type} ${className}` 
@@ -48,28 +55,32 @@
             const [portalPasswordInput, setPortalPasswordInput] = useState('');
             const [showAdminPasswordModal, setShowAdminPasswordModal] = useState(false);
             const [adminAction, setAdminAction] = useState('');
+            const [entities, setEntities] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [lastSync, setLastSync] = useState(null);
+
             const [newEntity, setNewEntity] = useState({
                 name: '',
                 type: 'facility',
                 address: '',
-                phoneNumbers: [{ department: 'Main', number: '', type: 'primary' }],
-                contractedService: '',
-                contractualObligations: [
+                phone_numbers: [{ department: 'Main', number: '', type: 'primary' }],
+                contracted_service: '',
+                contractual_obligations: [
                     { callType: 'Emergency', responseTime: '', requirements: '' }
                 ],
-                erEntrance: '',
-                flightProgram: {
+                er_entrance: '',
+                flight_program: {
                     isOneCall: false,
                     participating: false,
                     notes: ''
                 },
-                backupServices: {
+                backup_services: {
                     airService: '',
                     groundService: '',
                     noUnitsContact: '',
                     mutualAid: ''
                 },
-                countyInfo: {
+                county_info: {
                     coverage: '',
                     population: '',
                     squareMiles: ''
@@ -77,86 +88,66 @@
                 notes: ''
             });
 
-            // Load data from localStorage or use defaults
-            const [entities, setEntities] = useState(() => {
-                const saved = localStorage.getItem('emergencyEntities');
-                if (saved) {
-                    return JSON.parse(saved);
-                }
-                return [
-                    {
-                        id: 1,
-                        name: "Metro General Hospital",
-                        type: "facility",
-                        address: "123 Medical Center Dr, Metro City, ST 12345",
-                        phoneNumbers: [
-                            { department: "Main", number: "(555) 123-4567", type: "primary" },
-                            { department: "Emergency", number: "(555) 123-4911", type: "emergency" },
-                            { department: "Admissions", number: "(555) 123-4500", type: "department" },
-                            { department: "ICU", number: "(555) 123-4600", type: "department" }
-                        ],
-                        contractedService: "Emergency Transport & Flight Service",
-                        contractualObligations: [
-                            { callType: 'Emergency', responseTime: '8 minutes', requirements: 'ALS equipped unit with flight crew notification' },
-                            { callType: 'Non-Emergency', responseTime: '20 minutes', requirements: 'BLS transport acceptable' },
-                            { callType: 'Inter-facility', responseTime: '30 minutes', requirements: 'Specialized equipment as needed' }
-                        ],
-                        erEntrance: "North side of building, Level 1. Marked helicopter landing pad 200ft from ER entrance.",
-                        flightProgram: {
-                            isOneCall: true,
-                            participating: true,
-                            notes: "24/7 flight service. Preferred landing zone: Helipad H1"
-                        },
-                        backupServices: {
-                            airService: "Regional Air Rescue (555) 999-0001 - 15 miles north",
-                            groundService: "Metro EMS Backup (555) 888-0002 - 8 miles east"
-                        },
-                        lastContact: "2024-08-28",
-                        notes: "Level 1 Trauma Center. Always staffed with flight crew on standby."
-                    },
-                    {
-                        id: 2,
-                        name: "County 911 Dispatch",
-                        type: "911center",
-                        address: "456 Emergency Services Blvd, County Seat, ST 54321",
-                        phoneNumbers: [
-                            { department: "Main Dispatch", number: "(555) 911-0001", type: "primary" },
-                            { department: "Fire Dispatch", number: "(555) 911-0002", type: "department" },
-                            { department: "Medical Dispatch", number: "(555) 911-0003", type: "department" },
-                            { department: "Administrative", number: "(555) 911-0100", type: "admin" }
-                        ],
-                        contractedService: "Primary 911 Response Coordination",
-                        contractualObligations: [
-                            { callType: 'Priority 1 (Life Threat)', responseTime: '4 minutes', requirements: 'ALS unit + supervisor notification' },
-                            { callType: 'Priority 2 (Emergency)', responseTime: '8 minutes', requirements: 'BLS minimum, ALS preferred' },
-                            { callType: 'Priority 3 (Urgent)', responseTime: '15 minutes', requirements: 'Any available unit' },
-                            { callType: 'Priority 4 (Non-Emergency)', responseTime: '30 minutes', requirements: 'Standard response' }
-                        ],
-                        erEntrance: "N/A - Dispatch Center",
-                        flightProgram: {
-                            isOneCall: true,
-                            participating: true,
-                            notes: "Coordinates all county flight requests"
-                        },
-                        backupServices: {
-                            noUnitsContact: "State Emergency Services (555) 777-0001",
-                            mutualAid: "Adjacent County Dispatch (555) 666-0001"
-                        },
-                        countyInfo: {
-                            coverage: "Full county coverage",
-                            population: "125,000",
-                            squareMiles: "450"
-                        },
-                        lastContact: "2024-09-01",
-                        notes: "Primary dispatch for all county emergency services. 24/7 operation."
-                    }
-                ];
-            });
+            // Load entities from Supabase
+            const loadEntities = useCallback(async () => {
+                try {
+                    const { data, error } = await supabase
+                        .from('emergency_entities')
+                        .select('*')
+                        .order('created_at', { ascending: true });
 
-            // Save to localStorage whenever entities change
+                    if (error) {
+                        console.error('Error loading entities:', error);
+                        return;
+                    }
+
+                    // Transform data from database format to app format
+                    const transformedEntities = data.map(entity => ({
+                        id: entity.id,
+                        name: entity.name,
+                        type: entity.type,
+                        address: entity.address,
+                        phoneNumbers: entity.phone_numbers || [],
+                        contractedService: entity.contracted_service || '',
+                        contractualObligations: entity.contractual_obligations || [],
+                        erEntrance: entity.er_entrance || '',
+                        flightProgram: entity.flight_program || { isOneCall: false, participating: false, notes: '' },
+                        backupServices: entity.backup_services || {},
+                        countyInfo: entity.county_info || {},
+                        notes: entity.notes || '',
+                        lastContact: entity.last_contact || ''
+                    }));
+
+                    setEntities(transformedEntities);
+                    setLastSync(new Date().toLocaleTimeString());
+                } catch (err) {
+                    console.error('Error loading entities:', err);
+                } finally {
+                    setLoading(false);
+                }
+            }, []);
+
+            // Set up real-time subscription
             useEffect(() => {
-                localStorage.setItem('emergencyEntities', JSON.stringify(entities));
-            }, [entities]);
+                loadEntities();
+
+                // Subscribe to real-time changes
+                const subscription = supabase
+                    .channel('emergency_entities_changes')
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'emergency_entities'
+                    }, (payload) => {
+                        console.log('Real-time update:', payload);
+                        loadEntities(); // Reload data when changes occur
+                    })
+                    .subscribe();
+
+                return () => {
+                    subscription.unsubscribe();
+                };
+            }, [loadEntities]);
 
             const filteredEntities = entities.filter(entity =>
                 entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -204,23 +195,23 @@
                 const newObligation = { callType: '', responseTime: '', requirements: '' };
                 setEntityData(prev => ({
                     ...prev,
-                    contractualObligations: [...(prev.contractualObligations || []), newObligation]
+                    contractual_obligations: [...(prev.contractual_obligations || []), newObligation]
                 }));
             };
 
             const handleRemoveObligation = (index, entityData, setEntityData) => {
                 setEntityData(prev => ({
                     ...prev,
-                    contractualObligations: prev.contractualObligations.filter((_, i) => i !== index)
+                    contractual_obligations: (prev.contractual_obligations || []).filter((_, i) => i !== index)
                 }));
             };
 
             const handleObligationChange = (index, field, value, entityData, setEntityData) => {
+                const newObligations = [...(entityData.contractual_obligations || [])];
+                newObligations[index] = { ...newObligations[index], [field]: value };
                 setEntityData(prev => ({
                     ...prev,
-                    contractualObligations: prev.contractualObligations.map((obligation, i) => 
-                        i === index ? { ...obligation, [field]: value } : obligation
-                    )
+                    contractual_obligations: newObligations
                 }));
             };
 
@@ -228,100 +219,140 @@
                 const newPhone = { department: '', number: '', type: 'department' };
                 setEntityData(prev => ({
                     ...prev,
-                    phoneNumbers: [...prev.phoneNumbers, newPhone]
+                    phone_numbers: [...(prev.phone_numbers || []), newPhone]
                 }));
             };
 
             const handleRemovePhone = (index, entityData, setEntityData) => {
                 setEntityData(prev => ({
                     ...prev,
-                    phoneNumbers: prev.phoneNumbers.filter((_, i) => i !== index)
+                    phone_numbers: (prev.phone_numbers || []).filter((_, i) => i !== index)
                 }));
             };
 
             const handlePhoneChange = (index, field, value, entityData, setEntityData) => {
+                const newPhoneNumbers = [...(entityData.phone_numbers || [])];
+                newPhoneNumbers[index] = { ...newPhoneNumbers[index], [field]: value };
                 setEntityData(prev => ({
                     ...prev,
-                    phoneNumbers: prev.phoneNumbers.map((phone, i) => 
-                        i === index ? { ...phone, [field]: value } : phone
-                    )
+                    phone_numbers: newPhoneNumbers
                 }));
             };
 
-            const handleSaveNewEntity = () => {
-                const id = entities.length > 0 ? Math.max(...entities.map(e => e.id)) + 1 : 1;
-                const today = new Date().toISOString().split('T')[0];
-                const entityToSave = {
-                    ...newEntity,
-                    id,
-                    lastContact: today
-                };
-                
-                setEntities([...entities, entityToSave]);
-                setShowAdmin(false);
-                setNewEntity({
-                    name: '',
-                    type: 'facility',
-                    address: '',
-                    phoneNumbers: [{ department: 'Main', number: '', type: 'primary' }],
-                    contractedService: '',
-                    contractualObligations: [
-                        { callType: 'Emergency', responseTime: '', requirements: '' }
-                    ],
-                    erEntrance: '',
-                    flightProgram: {
-                        isOneCall: false,
-                        participating: false,
+            const handleSaveNewEntity = async () => {
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const entityToSave = {
+                        name: newEntity.name,
+                        type: newEntity.type,
+                        address: newEntity.address,
+                        phone_numbers: newEntity.phone_numbers,
+                        contracted_service: newEntity.contracted_service,
+                        contractual_obligations: newEntity.contractual_obligations,
+                        er_entrance: newEntity.er_entrance,
+                        flight_program: newEntity.flight_program,
+                        backup_services: newEntity.backup_services,
+                        county_info: newEntity.county_info,
+                        notes: newEntity.notes,
+                        last_contact: today
+                    };
+
+                    const { data, error } = await supabase
+                        .from('emergency_entities')
+                        .insert([entityToSave])
+                        .select();
+
+                    if (error) {
+                        console.error('Error saving entity:', error);
+                        alert('Error saving entity. Please try again.');
+                        return;
+                    }
+
+                    setShowAdmin(false);
+                    setNewEntity({
+                        name: '',
+                        type: 'facility',
+                        address: '',
+                        phone_numbers: [{ department: 'Main', number: '', type: 'primary' }],
+                        contracted_service: '',
+                        contractual_obligations: [
+                            { callType: 'Emergency', responseTime: '', requirements: '' }
+                        ],
+                        er_entrance: '',
+                        flight_program: {
+                            isOneCall: false,
+                            participating: false,
+                            notes: ''
+                        },
+                        backup_services: {
+                            airService: '',
+                            groundService: '',
+                            noUnitsContact: '',
+                            mutualAid: ''
+                        },
+                        county_info: {
+                            coverage: '',
+                            population: '',
+                            squareMiles: ''
+                        },
                         notes: ''
-                    },
-                    backupServices: {
-                        airService: '',
-                        groundService: '',
-                        noUnitsContact: '',
-                        mutualAid: ''
-                    },
-                    countyInfo: {
-                        coverage: '',
-                        population: '',
-                        squareMiles: ''
-                    },
-                    notes: ''
-                });
+                    });
+
+                    // Real-time subscription will automatically update the list
+                } catch (err) {
+                    console.error('Error saving entity:', err);
+                    alert('Error saving entity. Please try again.');
+                }
             };
 
-            const handleDeleteEntity = (entityId) => {
+            const handleDeleteEntity = async (entityId) => {
                 if (confirm('Are you sure you want to delete this entity?')) {
-                    setEntities(entities.filter(e => e.id !== entityId));
-                    if (selectedEntity?.id === entityId) {
-                        setSelectedEntity(null);
+                    try {
+                        const { error } = await supabase
+                            .from('emergency_entities')
+                            .delete()
+                            .eq('id', entityId);
+
+                        if (error) {
+                            console.error('Error deleting entity:', error);
+                            alert('Error deleting entity. Please try again.');
+                            return;
+                        }
+
+                        if (selectedEntity?.id === entityId) {
+                            setSelectedEntity(null);
+                        }
+
+                        // Real-time subscription will automatically update the list
+                    } catch (err) {
+                        console.error('Error deleting entity:', err);
+                        alert('Error deleting entity. Please try again.');
                     }
                 }
             };
 
-            const exportData = () => {
-                const dataStr = JSON.stringify(entities, null, 2);
-                const dataBlob = new Blob([dataStr], {type: 'application/json'});
-                const url = URL.createObjectURL(dataBlob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = 'emergency-entities-backup.json';
-                link.click();
-            };
+            const exportData = async () => {
+                try {
+                    const { data, error } = await supabase
+                        .from('emergency_entities')
+                        .select('*');
 
-            const importData = (event) => {
-                const file = event.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        try {
-                            const importedData = JSON.parse(e.target.result);
-                            setEntities(importedData);
-                            alert('Data imported successfully!');
-                        } catch (error) {
-                            alert('Error importing data. Please check the file format.');
-                        }
-                    };
-                    reader.readAsText(file);
+                    if (error) {
+                        console.error('Error exporting data:', error);
+                        alert('Error exporting data. Please try again.');
+                        return;
+                    }
+
+                    const dataStr = JSON.stringify(data, null, 2);
+                    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                    const url = URL.createObjectURL(dataBlob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `emergency-entities-backup-${new Date().toISOString().split('T')[0]}.json`;
+                    link.click();
+                } catch (err) {
+                    console.error('Error exporting data:', err);
+                    alert('Error exporting data. Please try again.');
                 }
             };
 
@@ -358,7 +389,8 @@
                                 )
                             ),
                             React.createElement('h1', { className: "text-2xl font-bold text-gray-900 mb-2" }, "Emergency Services Portal"),
-                            React.createElement('p', { className: "text-gray-600" }, "Communications Center Access")
+                            React.createElement('p', { className: "text-gray-600 mb-2" }, "Communications Center Access"),
+                            React.createElement('p', { className: "text-xs text-green-600" }, "✅ Real-time PostgreSQL Database")
                         ),
                         React.createElement('div', { className: "space-y-4" },
                             React.createElement('div', null,
@@ -456,24 +488,24 @@
                     ),
                     React.createElement('div', null,
                         React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "Phone Numbers"),
-                        ...entity.phoneNumbers.map((phone, index) =>
-                            React.createElement('div', { key: index, className: "flex items-center space-x-2 mb-2" },
+                        (entity.phone_numbers || []).map((phone, index) => (
+                            React.createElement('div', { key: `phone-${index}`, className: "flex items-center space-x-2 mb-2" },
                                 React.createElement('input', {
                                     type: "text",
                                     placeholder: "Department",
-                                    value: phone.department,
+                                    value: phone.department || '',
                                     onChange: (e) => handlePhoneChange(index, 'department', e.target.value, entity, setEntity),
                                     className: "flex-1 px-3 py-2 border border-gray-300 rounded-md"
                                 }),
                                 React.createElement('input', {
                                     type: "text",
                                     placeholder: "Phone Number",
-                                    value: phone.number,
+                                    value: phone.number || '',
                                     onChange: (e) => handlePhoneChange(index, 'number', e.target.value, entity, setEntity),
                                     className: "flex-1 px-3 py-2 border border-gray-300 rounded-md"
                                 }),
                                 React.createElement('select', {
-                                    value: phone.type,
+                                    value: phone.type || 'department',
                                     onChange: (e) => handlePhoneChange(index, 'type', e.target.value, entity, setEntity),
                                     className: "px-3 py-2 border border-gray-300 rounded-md"
                                 },
@@ -483,13 +515,15 @@
                                     React.createElement('option', { value: "admin" }, "Admin")
                                 ),
                                 React.createElement('button', {
+                                    type: "button",
                                     onClick: () => handleRemovePhone(index, entity, setEntity),
                                     className: "p-2 text-red-600 hover:bg-red-50 rounded-md",
-                                    disabled: entity.phoneNumbers.length === 1
+                                    disabled: (entity.phone_numbers || []).length === 1
                                 }, React.createElement(Icon, { type: 'trash', className: "h-4 w-4" }))
                             )
-                        ),
+                        )),
                         React.createElement('button', {
+                            type: "button",
                             onClick: () => handleAddPhone(entity, setEntity),
                             className: "flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm"
                         },
@@ -499,37 +533,39 @@
                     ),
                     React.createElement('div', null,
                         React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "Contractual Obligations & Response Times"),
-                        ...(entity.contractualObligations || []).map((obligation, index) =>
-                            React.createElement('div', { key: index, className: "flex items-center space-x-2 mb-2 p-3 border border-gray-200 rounded-md" },
+                        (entity.contractual_obligations || []).map((obligation, index) => (
+                            React.createElement('div', { key: `obligation-${index}`, className: "flex items-center space-x-2 mb-2 p-3 border border-gray-200 rounded-md" },
                                 React.createElement('input', {
                                     type: "text",
                                     placeholder: "Call Type (e.g., Emergency, Non-Emergency)",
-                                    value: obligation.callType,
+                                    value: obligation.callType || '',
                                     onChange: (e) => handleObligationChange(index, 'callType', e.target.value, entity, setEntity),
                                     className: "flex-1 px-3 py-2 border border-gray-300 rounded-md"
                                 }),
                                 React.createElement('input', {
                                     type: "text",
                                     placeholder: "Response Time (e.g., 8 minutes)",
-                                    value: obligation.responseTime,
+                                    value: obligation.responseTime || '',
                                     onChange: (e) => handleObligationChange(index, 'responseTime', e.target.value, entity, setEntity),
                                     className: "w-32 px-3 py-2 border border-gray-300 rounded-md"
                                 }),
                                 React.createElement('input', {
                                     type: "text",
                                     placeholder: "Requirements",
-                                    value: obligation.requirements,
+                                    value: obligation.requirements || '',
                                     onChange: (e) => handleObligationChange(index, 'requirements', e.target.value, entity, setEntity),
                                     className: "flex-1 px-3 py-2 border border-gray-300 rounded-md"
                                 }),
                                 React.createElement('button', {
+                                    type: "button",
                                     onClick: () => handleRemoveObligation(index, entity, setEntity),
                                     className: "p-2 text-red-600 hover:bg-red-50 rounded-md",
-                                    disabled: (entity.contractualObligations || []).length === 1
+                                    disabled: (entity.contractual_obligations || []).length === 1
                                 }, React.createElement(Icon, { type: 'trash', className: "h-4 w-4" }))
                             )
-                        ),
+                        )),
                         React.createElement('button', {
+                            type: "button",
                             onClick: () => handleAddObligation(entity, setEntity),
                             className: "flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm"
                         },
@@ -541,16 +577,16 @@
                         React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Contracted Service"),
                         React.createElement('input', {
                             type: "text",
-                            value: entity.contractedService,
-                            onChange: (e) => setEntity(prev => ({ ...prev, contractedService: e.target.value })),
+                            value: entity.contracted_service,
+                            onChange: (e) => setEntity(prev => ({ ...prev, contracted_service: e.target.value })),
                             className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         })
                     ),
                     entity.type === 'facility' && React.createElement('div', null,
                         React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "ER Entrance Information"),
                         React.createElement('textarea', {
-                            value: entity.erEntrance,
-                            onChange: (e) => setEntity(prev => ({ ...prev, erEntrance: e.target.value })),
+                            value: entity.er_entrance,
+                            onChange: (e) => setEntity(prev => ({ ...prev, er_entrance: e.target.value })),
                             className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
                             rows: "3",
                             placeholder: "Describe ER entrance location and access details..."
@@ -563,10 +599,10 @@
                                 React.createElement('label', { className: "flex items-center" },
                                     React.createElement('input', {
                                         type: "checkbox",
-                                        checked: entity.flightProgram.isOneCall,
+                                        checked: entity.flight_program?.isOneCall || false,
                                         onChange: (e) => setEntity(prev => ({
                                             ...prev,
-                                            flightProgram: { ...prev.flightProgram, isOneCall: e.target.checked }
+                                            flight_program: { ...prev.flight_program, isOneCall: e.target.checked }
                                         })),
                                         className: "mr-2"
                                     }),
@@ -575,10 +611,10 @@
                                 React.createElement('label', { className: "flex items-center" },
                                     React.createElement('input', {
                                         type: "checkbox",
-                                        checked: entity.flightProgram.participating,
+                                        checked: entity.flight_program?.participating || false,
                                         onChange: (e) => setEntity(prev => ({
                                             ...prev,
-                                            flightProgram: { ...prev.flightProgram, participating: e.target.checked }
+                                            flight_program: { ...prev.flight_program, participating: e.target.checked }
                                         })),
                                         className: "mr-2"
                                     }),
@@ -588,10 +624,10 @@
                             React.createElement('div', null,
                                 React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Flight Program Notes"),
                                 React.createElement('textarea', {
-                                    value: entity.flightProgram.notes,
+                                    value: entity.flight_program?.notes || '',
                                     onChange: (e) => setEntity(prev => ({
                                         ...prev,
-                                        flightProgram: { ...prev.flightProgram, notes: e.target.value }
+                                        flight_program: { ...prev.flight_program, notes: e.target.value }
                                     })),
                                     className: "w-full px-3 py-2 border border-gray-300 rounded-md",
                                     rows: "2"
@@ -607,10 +643,10 @@
                                     React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Air Service Backup"),
                                     React.createElement('input', {
                                         type: "text",
-                                        value: entity.backupServices.airService,
+                                        value: entity.backup_services?.airService || '',
                                         onChange: (e) => setEntity(prev => ({
                                             ...prev,
-                                            backupServices: { ...prev.backupServices, airService: e.target.value }
+                                            backup_services: { ...prev.backup_services, airService: e.target.value }
                                         })),
                                         className: "w-full px-3 py-2 border border-gray-300 rounded-md",
                                         placeholder: "Backup air service contact and distance"
@@ -620,10 +656,10 @@
                                     React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Ground Service Backup"),
                                     React.createElement('input', {
                                         type: "text",
-                                        value: entity.backupServices.groundService,
+                                        value: entity.backup_services?.groundService || '',
                                         onChange: (e) => setEntity(prev => ({
                                             ...prev,
-                                            backupServices: { ...prev.backupServices, groundService: e.target.value }
+                                            backup_services: { ...prev.backup_services, groundService: e.target.value }
                                         })),
                                         className: "w-full px-3 py-2 border border-gray-300 rounded-md",
                                         placeholder: "Backup ground service contact and distance"
@@ -634,10 +670,10 @@
                                     React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "No Units Available Contact"),
                                     React.createElement('input', {
                                         type: "text",
-                                        value: entity.backupServices.noUnitsContact,
+                                        value: entity.backup_services?.noUnitsContact || '',
                                         onChange: (e) => setEntity(prev => ({
                                             ...prev,
-                                            backupServices: { ...prev.backupServices, noUnitsContact: e.target.value }
+                                            backup_services: { ...prev.backup_services, noUnitsContact: e.target.value }
                                         })),
                                         className: "w-full px-3 py-2 border border-gray-300 rounded-md",
                                         placeholder: "Contact when no units available"
@@ -647,10 +683,10 @@
                                     React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Mutual Aid Contact"),
                                     React.createElement('input', {
                                         type: "text",
-                                        value: entity.backupServices.mutualAid,
+                                        value: entity.backup_services?.mutualAid || '',
                                         onChange: (e) => setEntity(prev => ({
                                             ...prev,
-                                            backupServices: { ...prev.backupServices, mutualAid: e.target.value }
+                                            backup_services: { ...prev.backup_services, mutualAid: e.target.value }
                                         })),
                                         className: "w-full px-3 py-2 border border-gray-300 rounded-md",
                                         placeholder: "Mutual aid coordination contact"
@@ -666,10 +702,10 @@
                                 React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Coverage Area"),
                                 React.createElement('input', {
                                     type: "text",
-                                    value: entity.countyInfo.coverage,
+                                    value: entity.county_info?.coverage || '',
                                     onChange: (e) => setEntity(prev => ({
                                         ...prev,
-                                        countyInfo: { ...prev.countyInfo, coverage: e.target.value }
+                                        county_info: { ...prev.county_info, coverage: e.target.value }
                                     })),
                                     className: "w-full px-3 py-2 border border-gray-300 rounded-md"
                                 })
@@ -678,10 +714,10 @@
                                 React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Population"),
                                 React.createElement('input', {
                                     type: "text",
-                                    value: entity.countyInfo.population,
+                                    value: entity.county_info?.population || '',
                                     onChange: (e) => setEntity(prev => ({
                                         ...prev,
-                                        countyInfo: { ...prev.countyInfo, population: e.target.value }
+                                        county_info: { ...prev.county_info, population: e.target.value }
                                     })),
                                     className: "w-full px-3 py-2 border border-gray-300 rounded-md"
                                 })
@@ -690,10 +726,10 @@
                                 React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Square Miles"),
                                 React.createElement('input', {
                                     type: "text",
-                                    value: entity.countyInfo.squareMiles,
+                                    value: entity.county_info?.squareMiles || '',
                                     onChange: (e) => setEntity(prev => ({
                                         ...prev,
-                                        countyInfo: { ...prev.countyInfo, squareMiles: e.target.value }
+                                        county_info: { ...prev.county_info, squareMiles: e.target.value }
                                     })),
                                     className: "w-full px-3 py-2 border border-gray-300 rounded-md"
                                 })
@@ -715,6 +751,15 @@
 
             if (!isPortalAuthenticated) {
                 return React.createElement(PortalLogin);
+            }
+
+            if (loading) {
+                return React.createElement('div', { className: "min-h-screen bg-gray-50 flex items-center justify-center" },
+                    React.createElement('div', { className: "text-center" },
+                        React.createElement(Icon, { type: 'sync', className: "h-8 w-8 text-blue-600 mx-auto mb-4 animate-spin" }),
+                        React.createElement('p', { className: "text-gray-600" }, "Loading from PostgreSQL database...")
+                    )
+                );
             }
 
             return (
@@ -743,7 +788,7 @@
                                     React.createElement('button', {
                                         onClick: handleSaveNewEntity,
                                         className: "px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                                    }, "Save Entity")
+                                    }, "Save to PostgreSQL")
                                 )
                             )
                         )
@@ -752,7 +797,10 @@
                     React.createElement('div', { className: "bg-white shadow-sm border-b" },
                         React.createElement('div', { className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" },
                             React.createElement('div', { className: "flex justify-between items-center py-4" },
-                                React.createElement('h1', { className: "text-2xl font-bold text-gray-900" }, "Emergency Services Portal"),
+                                React.createElement('div', null,
+                                    React.createElement('h1', { className: "text-2xl font-bold text-gray-900" }, "Emergency Services Portal"),
+                                    lastSync && React.createElement('p', { className: "text-xs text-green-600" }, `✅ PostgreSQL - Last sync: ${lastSync}`)
+                                ),
                                 React.createElement('div', { className: "flex items-center space-x-4" },
                                     React.createElement('button', {
                                         onClick: () => handleAdminClick('add'),
@@ -765,15 +813,6 @@
                                         onClick: exportData,
                                         className: "flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                                     }, "Export Data"),
-                                    isAdminAuthenticated && React.createElement('label', { className: "flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors cursor-pointer" },
-                                        React.createElement('span', null, "Import Data"),
-                                        React.createElement('input', {
-                                            type: "file",
-                                            accept: ".json",
-                                            onChange: importData,
-                                            className: "hidden"
-                                        })
-                                    ),
                                     React.createElement('button', {
                                         onClick: () => setIsPortalAuthenticated(false),
                                         className: "flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
@@ -805,7 +844,7 @@
                                         )
                                     ),
                                     React.createElement('div', { className: "max-h-96 overflow-y-auto" },
-                                        ...filteredEntities.map((entity) =>
+                                        filteredEntities.map((entity) =>
                                             React.createElement('div', {
                                                 key: entity.id,
                                                 className: `p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
@@ -876,7 +915,7 @@
                                             "Department Phone Numbers"
                                         ),
                                         React.createElement('div', { className: "space-y-3" },
-                                            ...selectedEntity.phoneNumbers.map((phone, index) =>
+                                            selectedEntity.phoneNumbers.map((phone, index) =>
                                                 React.createElement('div', { key: index, className: "flex items-center justify-between p-3 border border-gray-200 rounded-md" },
                                                     React.createElement('div', { className: "flex items-center space-x-4 flex-1" },
                                                         React.createElement('span', { className: "font-medium text-gray-900 min-w-24" }, `${phone.department}:`),
@@ -901,7 +940,7 @@
                                             "Response Time Requirements"
                                         ),
                                         selectedEntity.contractualObligations && selectedEntity.contractualObligations.length > 0 ? React.createElement('div', { className: "space-y-3" },
-                                            ...selectedEntity.contractualObligations.map((obligation, index) =>
+                                            selectedEntity.contractualObligations.map((obligation, index) =>
                                                 React.createElement('div', { key: index, className: "border border-gray-200 rounded-md p-4" },
                                                     React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-3 gap-4" },
                                                         React.createElement('div', null,
