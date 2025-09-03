@@ -837,15 +837,13 @@
                                                 )
                                             ),
                                             React.createElement('div', { className: "flex items-center space-x-2" },
-                                                isAdminAuthenticated && React.createElement('button', {
-                                                    onClick: () => handleEditEntity(selectedEntity),
-                                                    className: "flex items-center space-x-1 px-3 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
-                                                },
-                                                    React.createElement(Icon, { type: 'calendar', className: "h-4 w-4" }),
-                                                    React.createElement('span', null, "Edit")
-                                                ),
-                                                !isAdminAuthenticated && React.createElement('button', {
-                                                    onClick: () => handleEditEntity(selectedEntity),
+                                                React.createElement('button', {
+                                                    onClick: () => {
+                                                        console.log('Edit clicked');
+                                                        alert('Edit clicked for: ' + selectedEntity.name);
+                                                        setEditingEntity(selectedEntity);
+                                                        setShowAdmin(true);
+                                                    },
                                                     className: "flex items-center space-x-1 px-3 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
                                                 },
                                                     React.createElement(Icon, { type: 'calendar', className: "h-4 w-4" }),
