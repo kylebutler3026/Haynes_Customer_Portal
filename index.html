@@ -459,18 +459,42 @@
                 React.createElement('div', { className: "min-h-screen bg-gray-50" },
                     showAdminPasswordModal && React.createElement(AdminPasswordModal),
 
-                    // Complete Admin Modal
+                    // Complete Admin Modal - using inline component to avoid scoping issues
                     showAdmin && isAdminAuthenticated && React.createElement('div', { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" },
-                        React.createElement('div', { className: "bg-white rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col" },
-                            React.createElement('div', { className: "p-6 border-b flex justify-between items-center flex-shrink-0" },
+                        React.createElement('div', { className: "bg-white rounded-lg w-full max-w-2xl" },
+                            React.createElement('div', { className: "p-6 border-b flex justify-between items-center" },
                                 React.createElement('h3', { className: "text-xl font-semibold" }, "Add New Entity"),
                                 React.createElement('button', {
                                     onClick: () => setShowAdmin(false),
                                     className: "p-2 hover:bg-gray-100 rounded-md"
                                 }, React.createElement(Icon, { type: 'x', className: "h-5 w-5" }))
                             ),
-                            React.createElement('div', { className: "flex-1 overflow-hidden" },
-                                React.createElement(AdminForm)
+                            React.createElement('div', { className: "p-6" },
+                                React.createElement('h4', { className: "text-lg font-bold mb-4" }, "Add New Entity"),
+                                React.createElement('div', { className: "mb-4" },
+                                    React.createElement('label', { className: "block mb-1 text-sm font-medium text-gray-700" }, "Name:"),
+                                    React.createElement('input', {
+                                        type: "text",
+                                        value: newEntity?.name || '',
+                                        onChange: (e) => {
+                                            setNewEntity(prev => ({ ...prev, name: e.target.value }));
+                                        },
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    })
+                                ),
+                                React.createElement('div', { className: "flex justify-end space-x-2 pt-4" },
+                                    React.createElement('button', {
+                                        onClick: () => setShowAdmin(false),
+                                        className: "px-4 py-2 text-gray-600 hover:text-gray-800"
+                                    }, "Cancel"),
+                                    React.createElement('button', {
+                                        onClick: () => {
+                                            console.log('Test save:', newEntity);
+                                            alert('Current entity: ' + JSON.stringify(newEntity, null, 2));
+                                        },
+                                        className: "px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                    }, "Test Save")
+                                )
                             )
                         )
                     ),
