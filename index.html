@@ -31,7 +31,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useCallback, useMemo } = React;
+        const { useState, useEffect, useCallback } = React;
 
         // Initialize Supabase client
         const supabaseUrl = 'https://cpddhpwzgkivzfkqlbop.supabase.co';
@@ -59,8 +59,7 @@
             const [loading, setLoading] = useState(true);
             const [lastSync, setLastSync] = useState(null);
 
-            // Initialize newEntity with complete structure
-            const [newEntity, setNewEntity] = useState(() => ({
+            const [newEntity, setNewEntity] = useState({
                 name: '',
                 type: 'facility',
                 address: '',
@@ -87,7 +86,7 @@
                     squareMiles: ''
                 },
                 notes: ''
-            }));
+            });
 
             // Load entities from Supabase
             const loadEntities = useCallback(async () => {
@@ -150,12 +149,12 @@
                 };
             }, [loadEntities]);
 
-            const filteredEntities = useMemo(() => entities.filter(entity =>
+            const filteredEntities = entities.filter(entity =>
                 entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 entity.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 entity.phoneNumbers.some(phone => phone.number.includes(searchTerm)) ||
                 entity.type.toLowerCase().includes(searchTerm.toLowerCase())
-            ), [entities, searchTerm]);
+            );
 
             const handlePortalPasswordSubmit = () => {
                 if (portalPasswordInput === 'dispatch2024') {
@@ -192,6 +191,54 @@
                 }
             };
 
+            const handleAddObligation = (entityData, setEntityData) => {
+                const newObligation = { callType: '', responseTime: '', requirements: '' };
+                setEntityData(prev => ({
+                    ...prev,
+                    contractual_obligations: [...(prev.contractual_obligations || []), newObligation]
+                }));
+            };
+
+            const handleRemoveObligation = (index, entityData, setEntityData) => {
+                setEntityData(prev => ({
+                    ...prev,
+                    contractual_obligations: (prev.contractual_obligations || []).filter((_, i) => i !== index)
+                }));
+            };
+
+            const handleObligationChange = (index, field, value, entityData, setEntityData) => {
+                const newObligations = [...(entityData.contractual_obligations || [])];
+                newObligations[index] = { ...newObligations[index], [field]: value };
+                setEntityData(prev => ({
+                    ...prev,
+                    contractual_obligations: newObligations
+                }));
+            };
+
+            const handleAddPhone = (entityData, setEntityData) => {
+                const newPhone = { department: '', number: '', type: 'department' };
+                setEntityData(prev => ({
+                    ...prev,
+                    phone_numbers: [...(prev.phone_numbers || []), newPhone]
+                }));
+            };
+
+            const handleRemovePhone = (index, entityData, setEntityData) => {
+                setEntityData(prev => ({
+                    ...prev,
+                    phone_numbers: (prev.phone_numbers || []).filter((_, i) => i !== index)
+                }));
+            };
+
+            const handlePhoneChange = (index, field, value, entityData, setEntityData) => {
+                const newPhoneNumbers = [...(entityData.phone_numbers || [])];
+                newPhoneNumbers[index] = { ...newPhoneNumbers[index], [field]: value };
+                setEntityData(prev => ({
+                    ...prev,
+                    phone_numbers: newPhoneNumbers
+                }));
+            };
+
             const handleSaveNewEntity = async () => {
                 try {
                     const today = new Date().toISOString().split('T')[0];
@@ -222,7 +269,6 @@
                     }
 
                     setShowAdmin(false);
-                    // Reset form
                     setNewEntity({
                         name: '',
                         type: 'facility',
@@ -252,6 +298,7 @@
                         notes: ''
                     });
 
+                    // Real-time subscription will automatically update the list
                 } catch (err) {
                     console.error('Error saving entity:', err);
                     alert('Error saving entity. Please try again.');
@@ -275,6 +322,8 @@
                         if (selectedEntity?.id === entityId) {
                             setSelectedEntity(null);
                         }
+
+                        // Real-time subscription will automatically update the list
                     } catch (err) {
                         console.error('Error deleting entity:', err);
                         alert('Error deleting entity. Please try again.');
@@ -403,41 +452,299 @@
                 )
             );
 
-            // Simple test form first
-            const TestForm = () => (
-                React.createElement('div', { className: "p-4" },
-                    React.createElement('h3', { className: "text-lg font-bold mb-4" }, "Add New Entity - Test Form"),
-                    React.createElement('div', { className: "space-y-4" },
+            // Admin Form Component
+            const AdminForm = ({ entity, setEntity, isNew = false }) => (
+                React.createElement('div', { className: "space-y-6" },
+                    React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 gap-4" },
                         React.createElement('div', null,
                             React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Name"),
                             React.createElement('input', {
                                 type: "text",
-                                value: newEntity.name,
-                                onChange: (e) => setNewEntity(prev => ({ ...prev, name: e.target.value })),
-                                className: "w-full px-3 py-2 border border-gray-300 rounded-md",
-                                placeholder: "Enter name"
+                                value: entity.name,
+                                onChange: (e) => setEntity(prev => ({ ...prev, name: e.target.value })),
+                                className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             })
                         ),
                         React.createElement('div', null,
-                            React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Address"),
-                            React.createElement('textarea', {
-                                value: newEntity.address,
-                                onChange: (e) => setNewEntity(prev => ({ ...prev, address: e.target.value })),
-                                className: "w-full px-3 py-2 border border-gray-300 rounded-md",
-                                rows: 3,
-                                placeholder: "Enter address"
-                            })
-                        ),
-                        React.createElement('div', null,
-                            React.createElement('button', {
-                                onClick: () => console.log('Current entity:', newEntity),
-                                className: "px-4 py-2 bg-blue-600 text-white rounded-md mr-2"
-                            }, "Test Log"),
-                            React.createElement('button', {
-                                onClick: () => setShowAdmin(false),
-                                className: "px-4 py-2 bg-gray-600 text-white rounded-md"
-                            }, "Close")
+                            React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Type"),
+                            React.createElement('select', {
+                                value: entity.type,
+                                onChange: (e) => setEntity(prev => ({ ...prev, type: e.target.value })),
+                                className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            },
+                                React.createElement('option', { value: "facility" }, "Medical Facility"),
+                                React.createElement('option', { value: "911center" }, "911 Center")
+                            )
                         )
+                    ),
+                    React.createElement('div', null,
+                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Address"),
+                        React.createElement('textarea', {
+                            value: entity.address,
+                            onChange: (e) => setEntity(prev => ({ ...prev, address: e.target.value })),
+                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                            rows: "2"
+                        })
+                    ),
+                    React.createElement('div', null,
+                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "Phone Numbers"),
+                        (entity.phone_numbers || []).map((phone, index) => (
+                            React.createElement('div', { key: `phone-${index}`, className: "flex items-center space-x-2 mb-2" },
+                                React.createElement('input', {
+                                    type: "text",
+                                    placeholder: "Department",
+                                    value: phone.department || '',
+                                    onChange: (e) => handlePhoneChange(index, 'department', e.target.value, entity, setEntity),
+                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                                }),
+                                React.createElement('input', {
+                                    type: "text",
+                                    placeholder: "Phone Number",
+                                    value: phone.number || '',
+                                    onChange: (e) => handlePhoneChange(index, 'number', e.target.value, entity, setEntity),
+                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                                }),
+                                React.createElement('select', {
+                                    value: phone.type || 'department',
+                                    onChange: (e) => handlePhoneChange(index, 'type', e.target.value, entity, setEntity),
+                                    className: "px-3 py-2 border border-gray-300 rounded-md"
+                                },
+                                    React.createElement('option', { value: "primary" }, "Primary"),
+                                    React.createElement('option', { value: "emergency" }, "Emergency"),
+                                    React.createElement('option', { value: "department" }, "Department"),
+                                    React.createElement('option', { value: "admin" }, "Admin")
+                                ),
+                                React.createElement('button', {
+                                    type: "button",
+                                    onClick: () => handleRemovePhone(index, entity, setEntity),
+                                    className: "p-2 text-red-600 hover:bg-red-50 rounded-md",
+                                    disabled: (entity.phone_numbers || []).length === 1
+                                }, React.createElement(Icon, { type: 'trash', className: "h-4 w-4" }))
+                            )
+                        )),
+                        React.createElement('button', {
+                            type: "button",
+                            onClick: () => handleAddPhone(entity, setEntity),
+                            className: "flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm"
+                        },
+                            React.createElement(Icon, { type: 'plus', className: "h-4 w-4" }),
+                            React.createElement('span', null, "Add Phone Number")
+                        )
+                    ),
+                    React.createElement('div', null,
+                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "Contractual Obligations & Response Times"),
+                        (entity.contractual_obligations || []).map((obligation, index) => (
+                            React.createElement('div', { key: `obligation-${index}`, className: "flex items-center space-x-2 mb-2 p-3 border border-gray-200 rounded-md" },
+                                React.createElement('input', {
+                                    type: "text",
+                                    placeholder: "Call Type (e.g., Emergency, Non-Emergency)",
+                                    value: obligation.callType || '',
+                                    onChange: (e) => handleObligationChange(index, 'callType', e.target.value, entity, setEntity),
+                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                                }),
+                                React.createElement('input', {
+                                    type: "text",
+                                    placeholder: "Response Time (e.g., 8 minutes)",
+                                    value: obligation.responseTime || '',
+                                    onChange: (e) => handleObligationChange(index, 'responseTime', e.target.value, entity, setEntity),
+                                    className: "w-32 px-3 py-2 border border-gray-300 rounded-md"
+                                }),
+                                React.createElement('input', {
+                                    type: "text",
+                                    placeholder: "Requirements",
+                                    value: obligation.requirements || '',
+                                    onChange: (e) => handleObligationChange(index, 'requirements', e.target.value, entity, setEntity),
+                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                                }),
+                                React.createElement('button', {
+                                    type: "button",
+                                    onClick: () => handleRemoveObligation(index, entity, setEntity),
+                                    className: "p-2 text-red-600 hover:bg-red-50 rounded-md",
+                                    disabled: (entity.contractual_obligations || []).length === 1
+                                }, React.createElement(Icon, { type: 'trash', className: "h-4 w-4" }))
+                            )
+                        )),
+                        React.createElement('button', {
+                            type: "button",
+                            onClick: () => handleAddObligation(entity, setEntity),
+                            className: "flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm"
+                        },
+                            React.createElement(Icon, { type: 'plus', className: "h-4 w-4" }),
+                            React.createElement('span', null, "Add Contractual Obligation")
+                        )
+                    ),
+                    React.createElement('div', null,
+                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Contracted Service"),
+                        React.createElement('input', {
+                            type: "text",
+                            value: entity.contracted_service,
+                            onChange: (e) => setEntity(prev => ({ ...prev, contracted_service: e.target.value })),
+                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        })
+                    ),
+                    entity.type === 'facility' && React.createElement('div', null,
+                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "ER Entrance Information"),
+                        React.createElement('textarea', {
+                            value: entity.er_entrance,
+                            onChange: (e) => setEntity(prev => ({ ...prev, er_entrance: e.target.value })),
+                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                            rows: "3",
+                            placeholder: "Describe ER entrance location and access details..."
+                        })
+                    ),
+                    React.createElement('div', { className: "border border-gray-200 rounded-md p-4" },
+                        React.createElement('h4', { className: "font-medium text-gray-900 mb-3" }, "Flight Program"),
+                        React.createElement('div', { className: "space-y-3" },
+                            React.createElement('div', { className: "flex items-center space-x-4" },
+                                React.createElement('label', { className: "flex items-center" },
+                                    React.createElement('input', {
+                                        type: "checkbox",
+                                        checked: entity.flight_program?.isOneCall || false,
+                                        onChange: (e) => setEntity(prev => ({
+                                            ...prev,
+                                            flight_program: { ...prev.flight_program, isOneCall: e.target.checked }
+                                        })),
+                                        className: "mr-2"
+                                    }),
+                                    "One Call Facility/Center"
+                                ),
+                                React.createElement('label', { className: "flex items-center" },
+                                    React.createElement('input', {
+                                        type: "checkbox",
+                                        checked: entity.flight_program?.participating || false,
+                                        onChange: (e) => setEntity(prev => ({
+                                            ...prev,
+                                            flight_program: { ...prev.flight_program, participating: e.target.checked }
+                                        })),
+                                        className: "mr-2"
+                                    }),
+                                    "Flight Program Participant"
+                                )
+                            ),
+                            React.createElement('div', null,
+                                React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Flight Program Notes"),
+                                React.createElement('textarea', {
+                                    value: entity.flight_program?.notes || '',
+                                    onChange: (e) => setEntity(prev => ({
+                                        ...prev,
+                                        flight_program: { ...prev.flight_program, notes: e.target.value }
+                                    })),
+                                    className: "w-full px-3 py-2 border border-gray-300 rounded-md",
+                                    rows: "2"
+                                })
+                            )
+                        )
+                    ),
+                    React.createElement('div', { className: "border border-gray-200 rounded-md p-4" },
+                        React.createElement('h4', { className: "font-medium text-gray-900 mb-3" }, "Backup Services"),
+                        React.createElement('div', { className: "space-y-3" },
+                            entity.type === 'facility' ? [
+                                React.createElement('div', { key: "air" },
+                                    React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Air Service Backup"),
+                                    React.createElement('input', {
+                                        type: "text",
+                                        value: entity.backup_services?.airService || '',
+                                        onChange: (e) => setEntity(prev => ({
+                                            ...prev,
+                                            backup_services: { ...prev.backup_services, airService: e.target.value }
+                                        })),
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md",
+                                        placeholder: "Backup air service contact and distance"
+                                    })
+                                ),
+                                React.createElement('div', { key: "ground" },
+                                    React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Ground Service Backup"),
+                                    React.createElement('input', {
+                                        type: "text",
+                                        value: entity.backup_services?.groundService || '',
+                                        onChange: (e) => setEntity(prev => ({
+                                            ...prev,
+                                            backup_services: { ...prev.backup_services, groundService: e.target.value }
+                                        })),
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md",
+                                        placeholder: "Backup ground service contact and distance"
+                                    })
+                                )
+                            ] : [
+                                React.createElement('div', { key: "nounits" },
+                                    React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "No Units Available Contact"),
+                                    React.createElement('input', {
+                                        type: "text",
+                                        value: entity.backup_services?.noUnitsContact || '',
+                                        onChange: (e) => setEntity(prev => ({
+                                            ...prev,
+                                            backup_services: { ...prev.backup_services, noUnitsContact: e.target.value }
+                                        })),
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md",
+                                        placeholder: "Contact when no units available"
+                                    })
+                                ),
+                                React.createElement('div', { key: "mutual" },
+                                    React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Mutual Aid Contact"),
+                                    React.createElement('input', {
+                                        type: "text",
+                                        value: entity.backup_services?.mutualAid || '',
+                                        onChange: (e) => setEntity(prev => ({
+                                            ...prev,
+                                            backup_services: { ...prev.backup_services, mutualAid: e.target.value }
+                                        })),
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md",
+                                        placeholder: "Mutual aid coordination contact"
+                                    })
+                                )
+                            ]
+                        )
+                    ),
+                    entity.type === '911center' && React.createElement('div', { className: "border border-gray-200 rounded-md p-4" },
+                        React.createElement('h4', { className: "font-medium text-gray-900 mb-3" }, "Coverage Information"),
+                        React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-3 gap-3" },
+                            React.createElement('div', null,
+                                React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Coverage Area"),
+                                React.createElement('input', {
+                                    type: "text",
+                                    value: entity.county_info?.coverage || '',
+                                    onChange: (e) => setEntity(prev => ({
+                                        ...prev,
+                                        county_info: { ...prev.county_info, coverage: e.target.value }
+                                    })),
+                                    className: "w-full px-3 py-2 border border-gray-300 rounded-md"
+                                })
+                            ),
+                            React.createElement('div', null,
+                                React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Population"),
+                                React.createElement('input', {
+                                    type: "text",
+                                    value: entity.county_info?.population || '',
+                                    onChange: (e) => setEntity(prev => ({
+                                        ...prev,
+                                        county_info: { ...prev.county_info, population: e.target.value }
+                                    })),
+                                    className: "w-full px-3 py-2 border border-gray-300 rounded-md"
+                                })
+                            ),
+                            React.createElement('div', null,
+                                React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Square Miles"),
+                                React.createElement('input', {
+                                    type: "text",
+                                    value: entity.county_info?.squareMiles || '',
+                                    onChange: (e) => setEntity(prev => ({
+                                        ...prev,
+                                        county_info: { ...prev.county_info, squareMiles: e.target.value }
+                                    })),
+                                    className: "w-full px-3 py-2 border border-gray-300 rounded-md"
+                                })
+                            )
+                        )
+                    ),
+                    React.createElement('div', null,
+                        React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Notes"),
+                        React.createElement('textarea', {
+                            value: entity.notes,
+                            onChange: (e) => setEntity(prev => ({ ...prev, notes: e.target.value })),
+                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                            rows: "3",
+                            placeholder: "Operational notes and important information..."
+                        })
                     )
                 )
             );
@@ -459,269 +766,29 @@
                 React.createElement('div', { className: "min-h-screen bg-gray-50" },
                     showAdminPasswordModal && React.createElement(AdminPasswordModal),
 
-                    // Complete Admin Modal - using inline component to avoid scoping issues
+                    // Admin Modal
                     showAdmin && isAdminAuthenticated && React.createElement('div', { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" },
-                        React.createElement('div', { className: "bg-white rounded-lg w-full max-w-2xl" },
-                            React.createElement('div', { className: "p-6 border-b flex justify-between items-center" },
-                                React.createElement('h3', { className: "text-xl font-semibold" }, "Add New Entity"),
-                                React.createElement('button', {
-                                    onClick: () => setShowAdmin(false),
-                                    className: "p-2 hover:bg-gray-100 rounded-md"
-                                }, React.createElement(Icon, { type: 'x', className: "h-5 w-5" }))
-                            ),
-                            React.createElement('div', { className: "p-6 max-h-[70vh] overflow-y-auto" },
-                                React.createElement('h4', { className: "text-lg font-bold mb-4" }, "Add New Entity"),
-                                React.createElement('div', { className: "space-y-6" },
-                                    // Basic Information
-                                    React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 gap-4" },
-                                        React.createElement('div', null,
-                                            React.createElement('label', { className: "block mb-1 text-sm font-medium text-gray-700" }, "Name"),
-                                            React.createElement('input', {
-                                                type: "text",
-                                                value: newEntity?.name || '',
-                                                onChange: (e) => {
-                                                    setNewEntity(prev => ({ ...prev, name: e.target.value }));
-                                                },
-                                                className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                                                placeholder: "Enter facility or center name"
-                                            })
-                                        ),
-                                        React.createElement('div', null,
-                                            React.createElement('label', { className: "block mb-1 text-sm font-medium text-gray-700" }, "Type"),
-                                            React.createElement('select', {
-                                                value: newEntity?.type || 'facility',
-                                                onChange: (e) => {
-                                                    setNewEntity(prev => ({ ...prev, type: e.target.value }));
-                                                },
-                                                className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            },
-                                                React.createElement('option', { value: "facility" }, "Medical Facility"),
-                                                React.createElement('option', { value: "911center" }, "911 Center")
-                                            )
-                                        )
-                                    ),
-                                    
-                                    // Address
-                                    React.createElement('div', null,
-                                        React.createElement('label', { className: "block mb-1 text-sm font-medium text-gray-700" }, "Address"),
-                                        React.createElement('textarea', {
-                                            value: newEntity?.address || '',
-                                            onChange: (e) => {
-                                                setNewEntity(prev => ({ ...prev, address: e.target.value }));
-                                            },
-                                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                                            rows: 2,
-                                            placeholder: "Enter complete address"
-                                        })
-                                    ),
-                                    
-                                    // Phone Numbers Section
-                                    React.createElement('div', null,
-                                        React.createElement('label', { className: "block mb-2 text-sm font-medium text-gray-700" }, "Phone Numbers"),
-                                        (newEntity?.phone_numbers || [{ department: 'Main', number: '', type: 'primary' }]).map((phone, index) => (
-                                            React.createElement('div', { key: index, className: "flex items-center space-x-2 mb-2" },
-                                                React.createElement('input', {
-                                                    type: "text",
-                                                    placeholder: "Department",
-                                                    value: phone.department || '',
-                                                    onChange: (e) => {
-                                                        setNewEntity(prev => {
-                                                            const phones = [...(prev?.phone_numbers || [])];
-                                                            phones[index] = { ...phones[index], department: e.target.value };
-                                                            return { ...prev, phone_numbers: phones };
-                                                        });
-                                                    },
-                                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                }),
-                                                React.createElement('input', {
-                                                    type: "text",
-                                                    placeholder: "Phone Number",
-                                                    value: phone.number || '',
-                                                    onChange: (e) => {
-                                                        setNewEntity(prev => {
-                                                            const phones = [...(prev?.phone_numbers || [])];
-                                                            phones[index] = { ...phones[index], number: e.target.value };
-                                                            return { ...prev, phone_numbers: phones };
-                                                        });
-                                                    },
-                                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                }),
-                                                React.createElement('select', {
-                                                    value: phone.type || 'primary',
-                                                    onChange: (e) => {
-                                                        setNewEntity(prev => {
-                                                            const phones = [...(prev?.phone_numbers || [])];
-                                                            phones[index] = { ...phones[index], type: e.target.value };
-                                                            return { ...prev, phone_numbers: phones };
-                                                        });
-                                                    },
-                                                    className: "px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                },
-                                                    React.createElement('option', { value: "primary" }, "Primary"),
-                                                    React.createElement('option', { value: "emergency" }, "Emergency"),
-                                                    React.createElement('option', { value: "department" }, "Department"),
-                                                    React.createElement('option', { value: "admin" }, "Admin")
-                                                ),
-                                                React.createElement('button', {
-                                                    type: "button",
-                                                    onClick: () => {
-                                                        if ((newEntity?.phone_numbers?.length || 1) > 1) {
-                                                            setNewEntity(prev => ({
-                                                                ...prev,
-                                                                phone_numbers: (prev?.phone_numbers || []).filter((_, i) => i !== index)
-                                                            }));
-                                                        }
-                                                    },
-                                                    className: "p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors",
-                                                    disabled: (newEntity?.phone_numbers?.length || 1) === 1
-                                                }, React.createElement(Icon, { type: 'trash', className: "h-4 w-4" }))
-                                            )
-                                        )),
-                                        React.createElement('button', {
-                                            type: "button",
-                                            onClick: () => {
-                                                setNewEntity(prev => ({
-                                                    ...prev,
-                                                    phone_numbers: [...(prev?.phone_numbers || []), { department: '', number: '', type: 'department' }]
-                                                }));
-                                            },
-                                            className: "flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm transition-colors"
-                                        },
-                                            React.createElement(Icon, { type: 'plus', className: "h-4 w-4" }),
-                                            React.createElement('span', null, "Add Phone Number")
-                                        )
-                                    ),
-                                    
-                                    // Contracted Service
-                                    React.createElement('div', null,
-                                        React.createElement('label', { className: "block mb-1 text-sm font-medium text-gray-700" }, "Contracted Service"),
-                                        React.createElement('input', {
-                                            type: "text",
-                                            value: newEntity?.contracted_service || '',
-                                            onChange: (e) => {
-                                                setNewEntity(prev => ({ ...prev, contracted_service: e.target.value }));
-                                            },
-                                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                                            placeholder: "Enter contracted service details"
-                                        })
-                                    ),
-                                    
-                                    // Response Times Section
-                                    React.createElement('div', null,
-                                        React.createElement('label', { className: "block mb-2 text-sm font-medium text-gray-700" }, "Response Time Requirements"),
-                                        (newEntity?.contractual_obligations || [{ callType: 'Emergency', responseTime: '', requirements: '' }]).map((obligation, index) => (
-                                            React.createElement('div', { key: index, className: "grid grid-cols-1 md:grid-cols-3 gap-2 mb-2 p-3 border border-gray-200 rounded-md" },
-                                                React.createElement('input', {
-                                                    type: "text",
-                                                    placeholder: "Call Type",
-                                                    value: obligation.callType || '',
-                                                    onChange: (e) => {
-                                                        setNewEntity(prev => {
-                                                            const obligations = [...(prev?.contractual_obligations || [])];
-                                                            obligations[index] = { ...obligations[index], callType: e.target.value };
-                                                            return { ...prev, contractual_obligations: obligations };
-                                                        });
-                                                    },
-                                                    className: "px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                }),
-                                                React.createElement('input', {
-                                                    type: "text",
-                                                    placeholder: "Response Time",
-                                                    value: obligation.responseTime || '',
-                                                    onChange: (e) => {
-                                                        setNewEntity(prev => {
-                                                            const obligations = [...(prev?.contractual_obligations || [])];
-                                                            obligations[index] = { ...obligations[index], responseTime: e.target.value };
-                                                            return { ...prev, contractual_obligations: obligations };
-                                                        });
-                                                    },
-                                                    className: "px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                }),
-                                                React.createElement('div', { className: "flex items-center space-x-2" },
-                                                    React.createElement('input', {
-                                                        type: "text",
-                                                        placeholder: "Requirements",
-                                                        value: obligation.requirements || '',
-                                                        onChange: (e) => {
-                                                            setNewEntity(prev => {
-                                                                const obligations = [...(prev?.contractual_obligations || [])];
-                                                                obligations[index] = { ...obligations[index], requirements: e.target.value };
-                                                                return { ...prev, contractual_obligations: obligations };
-                                                            });
-                                                        },
-                                                        className: "flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                    }),
-                                                    React.createElement('button', {
-                                                        type: "button",
-                                                        onClick: () => {
-                                                            if ((newEntity?.contractual_obligations?.length || 1) > 1) {
-                                                                setNewEntity(prev => ({
-                                                                    ...prev,
-                                                                    contractual_obligations: (prev?.contractual_obligations || []).filter((_, i) => i !== index)
-                                                                }));
-                                                            }
-                                                        },
-                                                        className: "p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors",
-                                                        disabled: (newEntity?.contractual_obligations?.length || 1) === 1
-                                                    }, React.createElement(Icon, { type: 'trash', className: "h-4 w-4" }))
-                                                )
-                                            )
-                                        )),
-                                        React.createElement('button', {
-                                            type: "button",
-                                            onClick: () => {
-                                                setNewEntity(prev => ({
-                                                    ...prev,
-                                                    contractual_obligations: [...(prev?.contractual_obligations || []), { callType: '', responseTime: '', requirements: '' }]
-                                                }));
-                                            },
-                                            className: "flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm transition-colors"
-                                        },
-                                            React.createElement(Icon, { type: 'plus', className: "h-4 w-4" }),
-                                            React.createElement('span', null, "Add Response Requirement")
-                                        )
-                                    ),
-                                    
-                                    // ER Entrance (Facilities only)
-                                    (newEntity?.type === 'facility') && React.createElement('div', null,
-                                        React.createElement('label', { className: "block mb-1 text-sm font-medium text-gray-700" }, "ER Entrance Information"),
-                                        React.createElement('textarea', {
-                                            value: newEntity?.er_entrance || '',
-                                            onChange: (e) => {
-                                                setNewEntity(prev => ({ ...prev, er_entrance: e.target.value }));
-                                            },
-                                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                                            rows: 3,
-                                            placeholder: "Describe ER entrance location and access details..."
-                                        })
-                                    ),
-                                    
-                                    // Notes
-                                    React.createElement('div', null,
-                                        React.createElement('label', { className: "block mb-1 text-sm font-medium text-gray-700" }, "Notes"),
-                                        React.createElement('textarea', {
-                                            value: newEntity?.notes || '',
-                                            onChange: (e) => {
-                                                setNewEntity(prev => ({ ...prev, notes: e.target.value }));
-                                            },
-                                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                                            rows: 3,
-                                            placeholder: "Operational notes and important information..."
-                                        })
-                                    )
-                                ),
-                                React.createElement('div', { className: "flex justify-end space-x-2 pt-4 border-t mt-6" },
+                        React.createElement('div', { className: "bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto" },
+                            React.createElement('div', { className: "p-6 border-b" },
+                                React.createElement('div', { className: "flex justify-between items-center" },
+                                    React.createElement('h3', { className: "text-xl font-semibold" }, "Add New Entity"),
                                     React.createElement('button', {
-                                        onClick: () => {
-                                            setShowAdmin(false);
-                                            setEditingEntity(null);
-                                        },
-                                        className: "px-4 py-2 text-gray-600 hover:text-gray-800"
+                                        onClick: () => setShowAdmin(false),
+                                        className: "p-2 hover:bg-gray-100 rounded-md"
+                                    }, React.createElement(Icon, { type: 'x', className: "h-5 w-5" }))
+                                )
+                            ),
+                            React.createElement('div', { className: "p-6" },
+                                React.createElement(AdminForm, { entity: newEntity, setEntity: setNewEntity, isNew: true }),
+                                React.createElement('div', { className: "flex justify-end space-x-2 mt-6" },
+                                    React.createElement('button', {
+                                        onClick: () => setShowAdmin(false),
+                                        className: "px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
                                     }, "Cancel"),
                                     React.createElement('button', {
                                         onClick: handleSaveNewEntity,
-                                        className: "px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                                    }, editingEntity ? "Update in PostgreSQL" : "Save to PostgreSQL")
+                                        className: "px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                    }, "Save to PostgreSQL")
                                 )
                             )
                         )
@@ -864,6 +931,120 @@
                                     React.createElement('div', { className: "bg-white rounded-lg shadow p-6" },
                                         React.createElement('h3', { className: "text-lg font-semibold text-gray-900 mb-4" }, "Contracted Service"),
                                         React.createElement('p', { className: "text-gray-700 font-medium" }, selectedEntity.contractedService)
+                                    ),
+
+                                    // Contractual Obligations
+                                    React.createElement('div', { className: "bg-white rounded-lg shadow p-6" },
+                                        React.createElement('h3', { className: "text-lg font-semibold text-gray-900 mb-4 flex items-center" },
+                                            React.createElement(Icon, { type: 'calendar', className: "h-5 w-5 mr-2" }),
+                                            "Response Time Requirements"
+                                        ),
+                                        selectedEntity.contractualObligations && selectedEntity.contractualObligations.length > 0 ? React.createElement('div', { className: "space-y-3" },
+                                            selectedEntity.contractualObligations.map((obligation, index) =>
+                                                React.createElement('div', { key: index, className: "border border-gray-200 rounded-md p-4" },
+                                                    React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-3 gap-4" },
+                                                        React.createElement('div', null,
+                                                            React.createElement('h4', { className: "font-medium text-gray-900 text-sm mb-1" }, "Call Type"),
+                                                            React.createElement('span', { className: "text-blue-700 font-semibold" }, obligation.callType)
+                                                        ),
+                                                        React.createElement('div', null,
+                                                            React.createElement('h4', { className: "font-medium text-gray-900 text-sm mb-1" }, "Response Time"),
+                                                            React.createElement('span', { className: "text-green-700 font-bold text-lg" }, obligation.responseTime)
+                                                        ),
+                                                        React.createElement('div', { className: "md:col-span-1" },
+                                                            React.createElement('h4', { className: "font-medium text-gray-900 text-sm mb-1" }, "Requirements"),
+                                                            React.createElement('span', { className: "text-gray-700" }, obligation.requirements)
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        ) : React.createElement('p', { className: "text-gray-500 italic" }, "No contractual obligations specified")
+                                    ),
+
+                                    // ER Entrance Info (Facilities Only)
+                                    selectedEntity.type === 'facility' && React.createElement('div', { className: "bg-white rounded-lg shadow p-6" },
+                                        React.createElement('h3', { className: "text-lg font-semibold text-gray-900 mb-4 flex items-center" },
+                                            React.createElement(Icon, { type: 'truck', className: "h-5 w-5 mr-2" }),
+                                            "ER Entrance Information"
+                                        ),
+                                        React.createElement('p', { className: "text-gray-700 bg-blue-50 p-4 rounded-md" }, selectedEntity.erEntrance)
+                                    ),
+
+                                    // Flight Program Info
+                                    React.createElement('div', { className: "bg-white rounded-lg shadow p-6" },
+                                        React.createElement('h3', { className: "text-lg font-semibold text-gray-900 mb-4 flex items-center" },
+                                            React.createElement(Icon, { type: 'plane', className: "h-5 w-5 mr-2" }),
+                                            "Flight Program Status"
+                                        ),
+                                        React.createElement('div', { className: "space-y-3" },
+                                            React.createElement('div', { className: "flex items-center justify-between" },
+                                                React.createElement('span', { className: "text-gray-600" }, "One Call Facility/Center:"),
+                                                React.createElement('span', { className: `px-3 py-1 rounded-full text-sm font-medium ${
+                                                    selectedEntity.flightProgram.isOneCall 
+                                                        ? 'bg-green-100 text-green-800' 
+                                                        : 'bg-red-100 text-red-800'
+                                                }` }, selectedEntity.flightProgram.isOneCall ? 'Yes' : 'No')
+                                            ),
+                                            React.createElement('div', { className: "flex items-center justify-between" },
+                                                React.createElement('span', { className: "text-gray-600" }, "Flight Program Participant:"),
+                                                React.createElement('span', { className: `px-3 py-1 rounded-full text-sm font-medium ${
+                                                    selectedEntity.flightProgram.participating 
+                                                        ? 'bg-green-100 text-green-800' 
+                                                        : 'bg-red-100 text-red-800'
+                                                }` }, selectedEntity.flightProgram.participating ? 'Active' : 'Not Participating')
+                                            ),
+                                            React.createElement('p', { className: "text-gray-700 text-sm bg-gray-50 p-3 rounded-md" }, selectedEntity.flightProgram.notes)
+                                        )
+                                    ),
+
+                                    // Backup Services
+                                    React.createElement('div', { className: "bg-white rounded-lg shadow p-6" },
+                                        React.createElement('h3', { className: "text-lg font-semibold text-gray-900 mb-4 flex items-center" },
+                                            React.createElement(Icon, { type: 'alert', className: "h-5 w-5 mr-2 text-orange-500" }),
+                                            "Backup Services"
+                                        ),
+                                        selectedEntity.type === 'facility' ? React.createElement('div', { className: "space-y-4" },
+                                            React.createElement('div', null,
+                                                React.createElement('h4', { className: "font-medium text-gray-900 mb-2 flex items-center" },
+                                                    React.createElement(Icon, { type: 'plane', className: "h-4 w-4 mr-1" }),
+                                                    "Air Service Backup"
+                                                ),
+                                                React.createElement('p', { className: "text-gray-700 bg-orange-50 p-3 rounded-md font-medium" }, selectedEntity.backupServices.airService)
+                                            ),
+                                            React.createElement('div', null,
+                                                React.createElement('h4', { className: "font-medium text-gray-900 mb-2 flex items-center" },
+                                                    React.createElement(Icon, { type: 'truck', className: "h-4 w-4 mr-1" }),
+                                                    "Ground Service Backup"
+                                                ),
+                                                React.createElement('p', { className: "text-gray-700 bg-blue-50 p-3 rounded-md font-medium" }, selectedEntity.backupServices.groundService)
+                                            )
+                                        ) : React.createElement('div', { className: "space-y-4" },
+                                            React.createElement('div', null,
+                                                React.createElement('h4', { className: "font-medium text-gray-900 mb-2" }, "No Available Units Contact"),
+                                                React.createElement('p', { className: "text-gray-700 bg-red-50 p-3 rounded-md font-medium" }, selectedEntity.backupServices.noUnitsContact)
+                                            ),
+                                            React.createElement('div', null,
+                                                React.createElement('h4', { className: "font-medium text-gray-900 mb-2" }, "Mutual Aid Contact"),
+                                                React.createElement('p', { className: "text-gray-700 bg-yellow-50 p-3 rounded-md font-medium" }, selectedEntity.backupServices.mutualAid)
+                                            ),
+                                            selectedEntity.countyInfo && React.createElement('div', null,
+                                                React.createElement('h4', { className: "font-medium text-gray-900 mb-2" }, "Coverage Area"),
+                                                React.createElement('div', { className: "bg-gray-50 p-3 rounded-md space-y-1" },
+                                                    React.createElement('p', { className: "text-sm" },
+                                                        React.createElement('span', { className: "font-medium" }, "Area: "),
+                                                        selectedEntity.countyInfo.coverage
+                                                    ),
+                                                    React.createElement('p', { className: "text-sm" },
+                                                        React.createElement('span', { className: "font-medium" }, "Population: "),
+                                                        selectedEntity.countyInfo.population
+                                                    ),
+                                                    React.createElement('p', { className: "text-sm" },
+                                                        React.createElement('span', { className: "font-medium" }, "Square Miles: "),
+                                                        selectedEntity.countyInfo.squareMiles
+                                                    )
+                                                )
+                                            )
+                                        )
                                     ),
 
                                     // Notes
