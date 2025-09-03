@@ -469,9 +469,9 @@
                                     className: "p-2 hover:bg-gray-100 rounded-md"
                                 }, React.createElement(Icon, { type: 'x', className: "h-5 w-5" }))
                             ),
-                            React.createElement('div', { className: "p-6" },
+                            React.createElement('div', { className: "p-6 max-h-[70vh] overflow-y-auto" },
                                 React.createElement('h4', { className: "text-lg font-bold mb-4" }, "Add New Entity"),
-                                React.createElement('div', { className: "space-y-4" },
+                                React.createElement('div', { className: "space-y-6" },
                                     // Basic Information
                                     React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 gap-4" },
                                         React.createElement('div', null,
@@ -515,25 +515,81 @@
                                         })
                                     ),
                                     
-                                    // Main Phone Number
+                                    // Phone Numbers Section
                                     React.createElement('div', null,
-                                        React.createElement('label', { className: "block mb-1 text-sm font-medium text-gray-700" }, "Main Phone Number"),
-                                        React.createElement('input', {
-                                            type: "text",
-                                            value: newEntity?.phone_numbers?.[0]?.number || '',
-                                            onChange: (e) => {
+                                        React.createElement('label', { className: "block mb-2 text-sm font-medium text-gray-700" }, "Phone Numbers"),
+                                        (newEntity?.phone_numbers || [{ department: 'Main', number: '', type: 'primary' }]).map((phone, index) => (
+                                            React.createElement('div', { key: index, className: "flex items-center space-x-2 mb-2" },
+                                                React.createElement('input', {
+                                                    type: "text",
+                                                    placeholder: "Department",
+                                                    value: phone.department || '',
+                                                    onChange: (e) => {
+                                                        setNewEntity(prev => {
+                                                            const phones = [...(prev?.phone_numbers || [])];
+                                                            phones[index] = { ...phones[index], department: e.target.value };
+                                                            return { ...prev, phone_numbers: phones };
+                                                        });
+                                                    },
+                                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                }),
+                                                React.createElement('input', {
+                                                    type: "text",
+                                                    placeholder: "Phone Number",
+                                                    value: phone.number || '',
+                                                    onChange: (e) => {
+                                                        setNewEntity(prev => {
+                                                            const phones = [...(prev?.phone_numbers || [])];
+                                                            phones[index] = { ...phones[index], number: e.target.value };
+                                                            return { ...prev, phone_numbers: phones };
+                                                        });
+                                                    },
+                                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                }),
+                                                React.createElement('select', {
+                                                    value: phone.type || 'primary',
+                                                    onChange: (e) => {
+                                                        setNewEntity(prev => {
+                                                            const phones = [...(prev?.phone_numbers || [])];
+                                                            phones[index] = { ...phones[index], type: e.target.value };
+                                                            return { ...prev, phone_numbers: phones };
+                                                        });
+                                                    },
+                                                    className: "px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                },
+                                                    React.createElement('option', { value: "primary" }, "Primary"),
+                                                    React.createElement('option', { value: "emergency" }, "Emergency"),
+                                                    React.createElement('option', { value: "department" }, "Department"),
+                                                    React.createElement('option', { value: "admin" }, "Admin")
+                                                ),
+                                                React.createElement('button', {
+                                                    type: "button",
+                                                    onClick: () => {
+                                                        if ((newEntity?.phone_numbers?.length || 1) > 1) {
+                                                            setNewEntity(prev => ({
+                                                                ...prev,
+                                                                phone_numbers: (prev?.phone_numbers || []).filter((_, i) => i !== index)
+                                                            }));
+                                                        }
+                                                    },
+                                                    className: "p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors",
+                                                    disabled: (newEntity?.phone_numbers?.length || 1) === 1
+                                                }, React.createElement(Icon, { type: 'trash', className: "h-4 w-4" }))
+                                            )
+                                        )),
+                                        React.createElement('button', {
+                                            type: "button",
+                                            onClick: () => {
                                                 setNewEntity(prev => ({
                                                     ...prev,
-                                                    phone_numbers: [{
-                                                        department: prev?.phone_numbers?.[0]?.department || 'Main',
-                                                        number: e.target.value,
-                                                        type: prev?.phone_numbers?.[0]?.type || 'primary'
-                                                    }]
+                                                    phone_numbers: [...(prev?.phone_numbers || []), { department: '', number: '', type: 'department' }]
                                                 }));
                                             },
-                                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                                            placeholder: "Enter main phone number"
-                                        })
+                                            className: "flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm transition-colors"
+                                        },
+                                            React.createElement(Icon, { type: 'plus', className: "h-4 w-4" }),
+                                            React.createElement('span', null, "Add Phone Number")
+                                        )
                                     ),
                                     
                                     // Contracted Service
@@ -547,6 +603,96 @@
                                             },
                                             className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
                                             placeholder: "Enter contracted service details"
+                                        })
+                                    ),
+                                    
+                                    // Response Times Section
+                                    React.createElement('div', null,
+                                        React.createElement('label', { className: "block mb-2 text-sm font-medium text-gray-700" }, "Response Time Requirements"),
+                                        (newEntity?.contractual_obligations || [{ callType: 'Emergency', responseTime: '', requirements: '' }]).map((obligation, index) => (
+                                            React.createElement('div', { key: index, className: "grid grid-cols-1 md:grid-cols-3 gap-2 mb-2 p-3 border border-gray-200 rounded-md" },
+                                                React.createElement('input', {
+                                                    type: "text",
+                                                    placeholder: "Call Type",
+                                                    value: obligation.callType || '',
+                                                    onChange: (e) => {
+                                                        setNewEntity(prev => {
+                                                            const obligations = [...(prev?.contractual_obligations || [])];
+                                                            obligations[index] = { ...obligations[index], callType: e.target.value };
+                                                            return { ...prev, contractual_obligations: obligations };
+                                                        });
+                                                    },
+                                                    className: "px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                }),
+                                                React.createElement('input', {
+                                                    type: "text",
+                                                    placeholder: "Response Time",
+                                                    value: obligation.responseTime || '',
+                                                    onChange: (e) => {
+                                                        setNewEntity(prev => {
+                                                            const obligations = [...(prev?.contractual_obligations || [])];
+                                                            obligations[index] = { ...obligations[index], responseTime: e.target.value };
+                                                            return { ...prev, contractual_obligations: obligations };
+                                                        });
+                                                    },
+                                                    className: "px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                }),
+                                                React.createElement('div', { className: "flex items-center space-x-2" },
+                                                    React.createElement('input', {
+                                                        type: "text",
+                                                        placeholder: "Requirements",
+                                                        value: obligation.requirements || '',
+                                                        onChange: (e) => {
+                                                            setNewEntity(prev => {
+                                                                const obligations = [...(prev?.contractual_obligations || [])];
+                                                                obligations[index] = { ...obligations[index], requirements: e.target.value };
+                                                                return { ...prev, contractual_obligations: obligations };
+                                                            });
+                                                        },
+                                                        className: "flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    }),
+                                                    React.createElement('button', {
+                                                        type: "button",
+                                                        onClick: () => {
+                                                            if ((newEntity?.contractual_obligations?.length || 1) > 1) {
+                                                                setNewEntity(prev => ({
+                                                                    ...prev,
+                                                                    contractual_obligations: (prev?.contractual_obligations || []).filter((_, i) => i !== index)
+                                                                }));
+                                                            }
+                                                        },
+                                                        className: "p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors",
+                                                        disabled: (newEntity?.contractual_obligations?.length || 1) === 1
+                                                    }, React.createElement(Icon, { type: 'trash', className: "h-4 w-4" }))
+                                                )
+                                            )
+                                        )),
+                                        React.createElement('button', {
+                                            type: "button",
+                                            onClick: () => {
+                                                setNewEntity(prev => ({
+                                                    ...prev,
+                                                    contractual_obligations: [...(prev?.contractual_obligations || []), { callType: '', responseTime: '', requirements: '' }]
+                                                }));
+                                            },
+                                            className: "flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm transition-colors"
+                                        },
+                                            React.createElement(Icon, { type: 'plus', className: "h-4 w-4" }),
+                                            React.createElement('span', null, "Add Response Requirement")
+                                        )
+                                    ),
+                                    
+                                    // ER Entrance (Facilities only)
+                                    (newEntity?.type === 'facility') && React.createElement('div', null,
+                                        React.createElement('label', { className: "block mb-1 text-sm font-medium text-gray-700" }, "ER Entrance Information"),
+                                        React.createElement('textarea', {
+                                            value: newEntity?.er_entrance || '',
+                                            onChange: (e) => {
+                                                setNewEntity(prev => ({ ...prev, er_entrance: e.target.value }));
+                                            },
+                                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                                            rows: 3,
+                                            placeholder: "Describe ER entrance location and access details..."
                                         })
                                     ),
                                     
