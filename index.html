@@ -298,7 +298,8 @@
                                 value: formData.flight_program.notes,
                                 onChange: (e) => updateNestedField('flight_program', 'notes', e.target.value),
                                 className: "w-full px-3 py-2 border border-gray-300 rounded-md",
-                                rows: "2"
+                                rows: "2",
+                                placeholder: "Additional flight program details, helicopter landing zones, special protocols, etc."
                             })
                         )
                     )
@@ -942,7 +943,15 @@
                                                         : 'bg-red-100 text-red-800'
                                                 }` }, selectedEntity.flightProgram.participating ? 'Active' : 'Not Participating')
                                             ),
-                                            React.createElement('p', { className: "text-gray-700 text-sm bg-gray-50 p-3 rounded-md" }, selectedEntity.flightProgram.notes)
+                                            React.createElement('div', { className: "flex items-center justify-between" },
+                                                React.createElement('span', { className: "text-gray-600" }, "Flight By Ground:"),
+                                                React.createElement('span', { className: `px-3 py-1 rounded-full text-sm font-medium ${
+                                                    selectedEntity.flightProgram.flightByGround 
+                                                        ? 'bg-yellow-100 text-yellow-800' 
+                                                        : 'bg-gray-100 text-gray-800'
+                                                }` }, selectedEntity.flightProgram.flightByGround ? 'Required' : 'Not Required')
+                                            ),
+                                            selectedEntity.flightProgram.notes && React.createElement('p', { className: "text-gray-700 text-sm bg-gray-50 p-3 rounded-md" }, selectedEntity.flightProgram.notes)
                                         )
                                     ),
 
