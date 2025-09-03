@@ -884,3 +884,137 @@
 
                                     // Contractual Obligations
                                     React.createElement('div', { className: "bg-white rounded-lg shadow p-6" },
+                                        React.createElement('h3', { className: "text-lg font-semibold text-gray-900 mb-4 flex items-center" },
+                                            React.createElement(Icon, { type: 'calendar', className: "h-5 w-5 mr-2" }),
+                                            "Response Time Requirements"
+                                        ),
+                                        selectedEntity.contractualObligations && selectedEntity.contractualObligations.length > 0 ? React.createElement('div', { className: "space-y-3" },
+                                            selectedEntity.contractualObligations.map((obligation, index) =>
+                                                React.createElement('div', { key: index, className: "border border-gray-200 rounded-md p-4" },
+                                                    React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-3 gap-4" },
+                                                        React.createElement('div', null,
+                                                            React.createElement('h4', { className: "font-medium text-gray-900 text-sm mb-1" }, "Call Type"),
+                                                            React.createElement('span', { className: "text-blue-700 font-semibold" }, obligation.callType)
+                                                        ),
+                                                        React.createElement('div', null,
+                                                            React.createElement('h4', { className: "font-medium text-gray-900 text-sm mb-1" }, "Response Time"),
+                                                            React.createElement('span', { className: "text-green-700 font-bold text-lg" }, obligation.responseTime)
+                                                        ),
+                                                        React.createElement('div', { className: "md:col-span-1" },
+                                                            React.createElement('h4', { className: "font-medium text-gray-900 text-sm mb-1" }, "Requirements"),
+                                                            React.createElement('span', { className: "text-gray-700" }, obligation.requirements)
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        ) : React.createElement('p', { className: "text-gray-500 italic" }, "No contractual obligations specified")
+                                    ),
+
+                                    // ER Entrance Info (Facilities Only)
+                                    selectedEntity.type === 'facility' && React.createElement('div', { className: "bg-white rounded-lg shadow p-6" },
+                                        React.createElement('h3', { className: "text-lg font-semibold text-gray-900 mb-4 flex items-center" },
+                                            React.createElement(Icon, { type: 'truck', className: "h-5 w-5 mr-2" }),
+                                            "ER Entrance Information"
+                                        ),
+                                        React.createElement('p', { className: "text-gray-700 bg-blue-50 p-4 rounded-md" }, selectedEntity.erEntrance)
+                                    ),
+
+                                    // Flight Program Info
+                                    React.createElement('div', { className: "bg-white rounded-lg shadow p-6" },
+                                        React.createElement('h3', { className: "text-lg font-semibold text-gray-900 mb-4 flex items-center" },
+                                            React.createElement(Icon, { type: 'plane', className: "h-5 w-5 mr-2" }),
+                                            "Flight Program Status"
+                                        ),
+                                        React.createElement('div', { className: "space-y-3" },
+                                            React.createElement('div', { className: "flex items-center justify-between" },
+                                                React.createElement('span', { className: "text-gray-600" }, "One Call Facility/Center:"),
+                                                React.createElement('span', { className: `px-3 py-1 rounded-full text-sm font-medium ${
+                                                    selectedEntity.flightProgram.isOneCall 
+                                                        ? 'bg-green-100 text-green-800' 
+                                                        : 'bg-red-100 text-red-800'
+                                                }` }, selectedEntity.flightProgram.isOneCall ? 'Yes' : 'No')
+                                            ),
+                                            React.createElement('div', { className: "flex items-center justify-between" },
+                                                React.createElement('span', { className: "text-gray-600" }, "Flight Program Participant:"),
+                                                React.createElement('span', { className: `px-3 py-1 rounded-full text-sm font-medium ${
+                                                    selectedEntity.flightProgram.participating 
+                                                        ? 'bg-green-100 text-green-800' 
+                                                        : 'bg-red-100 text-red-800'
+                                                }` }, selectedEntity.flightProgram.participating ? 'Active' : 'Not Participating')
+                                            ),
+                                            React.createElement('p', { className: "text-gray-700 text-sm bg-gray-50 p-3 rounded-md" }, selectedEntity.flightProgram.notes)
+                                        )
+                                    ),
+
+                                    // Backup Services
+                                    React.createElement('div', { className: "bg-white rounded-lg shadow p-6" },
+                                        React.createElement('h3', { className: "text-lg font-semibold text-gray-900 mb-4 flex items-center" },
+                                            React.createElement(Icon, { type: 'alert', className: "h-5 w-5 mr-2 text-orange-500" }),
+                                            "Backup Services"
+                                        ),
+                                        selectedEntity.type === 'facility' ? React.createElement('div', { className: "space-y-4" },
+                                            React.createElement('div', null,
+                                                React.createElement('h4', { className: "font-medium text-gray-900 mb-2 flex items-center" },
+                                                    React.createElement(Icon, { type: 'plane', className: "h-4 w-4 mr-1" }),
+                                                    "Air Service Backup"
+                                                ),
+                                                React.createElement('p', { className: "text-gray-700 bg-orange-50 p-3 rounded-md font-medium" }, selectedEntity.backupServices.airService)
+                                            ),
+                                            React.createElement('div', null,
+                                                React.createElement('h4', { className: "font-medium text-gray-900 mb-2 flex items-center" },
+                                                    React.createElement(Icon, { type: 'truck', className: "h-4 w-4 mr-1" }),
+                                                    "Ground Service Backup"
+                                                ),
+                                                React.createElement('p', { className: "text-gray-700 bg-blue-50 p-3 rounded-md font-medium" }, selectedEntity.backupServices.groundService)
+                                            )
+                                        ) : React.createElement('div', { className: "space-y-4" },
+                                            React.createElement('div', null,
+                                                React.createElement('h4', { className: "font-medium text-gray-900 mb-2" }, "No Available Units Contact"),
+                                                React.createElement('p', { className: "text-gray-700 bg-red-50 p-3 rounded-md font-medium" }, selectedEntity.backupServices.noUnitsContact)
+                                            ),
+                                            React.createElement('div', null,
+                                                React.createElement('h4', { className: "font-medium text-gray-900 mb-2" }, "Mutual Aid Contact"),
+                                                React.createElement('p', { className: "text-gray-700 bg-yellow-50 p-3 rounded-md font-medium" }, selectedEntity.backupServices.mutualAid)
+                                            ),
+                                            selectedEntity.countyInfo && React.createElement('div', null,
+                                                React.createElement('h4', { className: "font-medium text-gray-900 mb-2" }, "Coverage Area"),
+                                                React.createElement('div', { className: "bg-gray-50 p-3 rounded-md space-y-1" },
+                                                    React.createElement('p', { className: "text-sm" },
+                                                        React.createElement('span', { className: "font-medium" }, "Area: "),
+                                                        selectedEntity.countyInfo.coverage
+                                                    ),
+                                                    React.createElement('p', { className: "text-sm" },
+                                                        React.createElement('span', { className: "font-medium" }, "Population: "),
+                                                        selectedEntity.countyInfo.population
+                                                    ),
+                                                    React.createElement('p', { className: "text-sm" },
+                                                        React.createElement('span', { className: "font-medium" }, "Square Miles: "),
+                                                        selectedEntity.countyInfo.squareMiles
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    ),
+
+                                    // Notes
+                                    React.createElement('div', { className: "bg-white rounded-lg shadow p-6" },
+                                        React.createElement('h3', { className: "text-lg font-semibold text-gray-900 mb-4" }, "Operational Notes"),
+                                        React.createElement('p', { className: "text-gray-700 bg-gray-50 p-4 rounded-md" }, selectedEntity.notes)
+                                    )
+                                ) : React.createElement('div', { className: "bg-white rounded-lg shadow p-8 text-center" },
+                                    React.createElement(Icon, { type: 'building', className: "h-16 w-16 text-gray-300 mx-auto mb-4" }),
+                                    React.createElement('h3', { className: "text-lg font-medium text-gray-900 mb-2" }, "Select a Facility or 911 Center"),
+                                    React.createElement('p', { className: "text-gray-600" }, "Search and select from the list to view complete emergency services information.")
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(EmergencyPortal));
+    </script>
+</body>
+</html>
