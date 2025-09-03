@@ -31,7 +31,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useCallback } = React;
+        const { useState, useEffect, useCallback, useMemo } = React;
 
         // Initialize Supabase client
         const supabaseUrl = 'https://cpddhpwzgkivzfkqlbop.supabase.co';
@@ -149,12 +149,12 @@
                 };
             }, [loadEntities]);
 
-            const filteredEntities = entities.filter(entity =>
+            const filteredEntities = useMemo(() => entities.filter(entity =>
                 entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 entity.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 entity.phoneNumbers.some(phone => phone.number.includes(searchTerm)) ||
                 entity.type.toLowerCase().includes(searchTerm.toLowerCase())
-            );
+            ), [entities, searchTerm]);
 
             const handlePortalPasswordSubmit = () => {
                 if (portalPasswordInput === 'dispatch2024') {
@@ -191,53 +191,47 @@
                 }
             };
 
-            const handleAddObligation = (entityData, setEntityData) => {
-                const newObligation = { callType: '', responseTime: '', requirements: '' };
-                setEntityData(prev => ({
-                    ...prev,
-                    contractual_obligations: [...(prev.contractual_obligations || []), newObligation]
-                }));
-            };
+            // Fixed handlers that properly update state
+            const updateNestedField = useCallback((path, value) => {
+                setNewEntity(prev => {
+                    const newState = { ...prev };
+                    const keys = path.split('.');
+                    let current = newState;
+                    
+                    for (let i = 0; i < keys.length - 1; i++) {
+                        if (!current[keys[i]]) {
+                            current[keys[i]] = {};
+                        }
+                        current[keys[i]] = { ...current[keys[i]] };
+                        current = current[keys[i]];
+                    }
+                    
+                    current[keys[keys.length - 1]] = value;
+                    return newState;
+                });
+            }, []);
 
-            const handleRemoveObligation = (index, entityData, setEntityData) => {
-                setEntityData(prev => ({
-                    ...prev,
-                    contractual_obligations: (prev.contractual_obligations || []).filter((_, i) => i !== index)
-                }));
-            };
+            const updateArrayField = useCallback((arrayName, index, field, value) => {
+                setNewEntity(prev => {
+                    const newArray = [...(prev[arrayName] || [])];
+                    newArray[index] = { ...newArray[index], [field]: value };
+                    return { ...prev, [arrayName]: newArray };
+                });
+            }, []);
 
-            const handleObligationChange = (index, field, value, entityData, setEntityData) => {
-                const newObligations = [...(entityData.contractual_obligations || [])];
-                newObligations[index] = { ...newObligations[index], [field]: value };
-                setEntityData(prev => ({
+            const addToArray = useCallback((arrayName, newItem) => {
+                setNewEntity(prev => ({
                     ...prev,
-                    contractual_obligations: newObligations
+                    [arrayName]: [...(prev[arrayName] || []), newItem]
                 }));
-            };
+            }, []);
 
-            const handleAddPhone = (entityData, setEntityData) => {
-                const newPhone = { department: '', number: '', type: 'department' };
-                setEntityData(prev => ({
+            const removeFromArray = useCallback((arrayName, index) => {
+                setNewEntity(prev => ({
                     ...prev,
-                    phone_numbers: [...(prev.phone_numbers || []), newPhone]
+                    [arrayName]: (prev[arrayName] || []).filter((_, i) => i !== index)
                 }));
-            };
-
-            const handleRemovePhone = (index, entityData, setEntityData) => {
-                setEntityData(prev => ({
-                    ...prev,
-                    phone_numbers: (prev.phone_numbers || []).filter((_, i) => i !== index)
-                }));
-            };
-
-            const handlePhoneChange = (index, field, value, entityData, setEntityData) => {
-                const newPhoneNumbers = [...(entityData.phone_numbers || [])];
-                newPhoneNumbers[index] = { ...newPhoneNumbers[index], [field]: value };
-                setEntityData(prev => ({
-                    ...prev,
-                    phone_numbers: newPhoneNumbers
-                }));
-            };
+            }, []);
 
             const handleSaveNewEntity = async () => {
                 try {
@@ -452,24 +446,25 @@
                 )
             );
 
-            // Admin Form Component
-            const AdminForm = ({ entity, setEntity, isNew = false }) => (
+            // Fixed Admin Form Component
+            const AdminForm = React.memo(() => (
                 React.createElement('div', { className: "space-y-6" },
                     React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 gap-4" },
                         React.createElement('div', null,
                             React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Name"),
                             React.createElement('input', {
                                 type: "text",
-                                value: entity.name,
-                                onChange: (e) => setEntity(prev => ({ ...prev, name: e.target.value })),
-                                className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                value: newEntity.name,
+                                onChange: (e) => setNewEntity(prev => ({ ...prev, name: e.target.value })),
+                                className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                                placeholder: "Enter facility or center name"
                             })
                         ),
                         React.createElement('div', null,
                             React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Type"),
                             React.createElement('select', {
-                                value: entity.type,
-                                onChange: (e) => setEntity(prev => ({ ...prev, type: e.target.value })),
+                                value: newEntity.type,
+                                onChange: (e) => setNewEntity(prev => ({ ...prev, type: e.target.value })),
                                 className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             },
                                 React.createElement('option', { value: "facility" }, "Medical Facility"),
@@ -480,34 +475,35 @@
                     React.createElement('div', null,
                         React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Address"),
                         React.createElement('textarea', {
-                            value: entity.address,
-                            onChange: (e) => setEntity(prev => ({ ...prev, address: e.target.value })),
+                            value: newEntity.address,
+                            onChange: (e) => setNewEntity(prev => ({ ...prev, address: e.target.value })),
                             className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                            rows: "2"
+                            rows: "2",
+                            placeholder: "Enter complete address"
                         })
                     ),
                     React.createElement('div', null,
                         React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "Phone Numbers"),
-                        (entity.phone_numbers || []).map((phone, index) => (
+                        (newEntity.phone_numbers || []).map((phone, index) => (
                             React.createElement('div', { key: `phone-${index}`, className: "flex items-center space-x-2 mb-2" },
                                 React.createElement('input', {
                                     type: "text",
                                     placeholder: "Department",
                                     value: phone.department || '',
-                                    onChange: (e) => handlePhoneChange(index, 'department', e.target.value, entity, setEntity),
-                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                                    onChange: (e) => updateArrayField('phone_numbers', index, 'department', e.target.value),
+                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 }),
                                 React.createElement('input', {
                                     type: "text",
                                     placeholder: "Phone Number",
                                     value: phone.number || '',
-                                    onChange: (e) => handlePhoneChange(index, 'number', e.target.value, entity, setEntity),
-                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                                    onChange: (e) => updateArrayField('phone_numbers', index, 'number', e.target.value),
+                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 }),
                                 React.createElement('select', {
                                     value: phone.type || 'department',
-                                    onChange: (e) => handlePhoneChange(index, 'type', e.target.value, entity, setEntity),
-                                    className: "px-3 py-2 border border-gray-300 rounded-md"
+                                    onChange: (e) => updateArrayField('phone_numbers', index, 'type', e.target.value),
+                                    className: "px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 },
                                     React.createElement('option', { value: "primary" }, "Primary"),
                                     React.createElement('option', { value: "emergency" }, "Emergency"),
@@ -516,16 +512,16 @@
                                 ),
                                 React.createElement('button', {
                                     type: "button",
-                                    onClick: () => handleRemovePhone(index, entity, setEntity),
-                                    className: "p-2 text-red-600 hover:bg-red-50 rounded-md",
-                                    disabled: (entity.phone_numbers || []).length === 1
+                                    onClick: () => removeFromArray('phone_numbers', index),
+                                    className: "p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors",
+                                    disabled: (newEntity.phone_numbers || []).length === 1
                                 }, React.createElement(Icon, { type: 'trash', className: "h-4 w-4" }))
                             )
                         )),
                         React.createElement('button', {
                             type: "button",
-                            onClick: () => handleAddPhone(entity, setEntity),
-                            className: "flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm"
+                            onClick: () => addToArray('phone_numbers', { department: '', number: '', type: 'department' }),
+                            className: "flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm transition-colors"
                         },
                             React.createElement(Icon, { type: 'plus', className: "h-4 w-4" }),
                             React.createElement('span', null, "Add Phone Number")
@@ -533,41 +529,41 @@
                     ),
                     React.createElement('div', null,
                         React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-2" }, "Contractual Obligations & Response Times"),
-                        (entity.contractual_obligations || []).map((obligation, index) => (
+                        (newEntity.contractual_obligations || []).map((obligation, index) => (
                             React.createElement('div', { key: `obligation-${index}`, className: "flex items-center space-x-2 mb-2 p-3 border border-gray-200 rounded-md" },
                                 React.createElement('input', {
                                     type: "text",
                                     placeholder: "Call Type (e.g., Emergency, Non-Emergency)",
                                     value: obligation.callType || '',
-                                    onChange: (e) => handleObligationChange(index, 'callType', e.target.value, entity, setEntity),
-                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                                    onChange: (e) => updateArrayField('contractual_obligations', index, 'callType', e.target.value),
+                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 }),
                                 React.createElement('input', {
                                     type: "text",
                                     placeholder: "Response Time (e.g., 8 minutes)",
                                     value: obligation.responseTime || '',
-                                    onChange: (e) => handleObligationChange(index, 'responseTime', e.target.value, entity, setEntity),
-                                    className: "w-32 px-3 py-2 border border-gray-300 rounded-md"
+                                    onChange: (e) => updateArrayField('contractual_obligations', index, 'responseTime', e.target.value),
+                                    className: "w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 }),
                                 React.createElement('input', {
                                     type: "text",
                                     placeholder: "Requirements",
                                     value: obligation.requirements || '',
-                                    onChange: (e) => handleObligationChange(index, 'requirements', e.target.value, entity, setEntity),
-                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                                    onChange: (e) => updateArrayField('contractual_obligations', index, 'requirements', e.target.value),
+                                    className: "flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 }),
                                 React.createElement('button', {
                                     type: "button",
-                                    onClick: () => handleRemoveObligation(index, entity, setEntity),
-                                    className: "p-2 text-red-600 hover:bg-red-50 rounded-md",
-                                    disabled: (entity.contractual_obligations || []).length === 1
+                                    onClick: () => removeFromArray('contractual_obligations', index),
+                                    className: "p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors",
+                                    disabled: (newEntity.contractual_obligations || []).length === 1
                                 }, React.createElement(Icon, { type: 'trash', className: "h-4 w-4" }))
                             )
                         )),
                         React.createElement('button', {
                             type: "button",
-                            onClick: () => handleAddObligation(entity, setEntity),
-                            className: "flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm"
+                            onClick: () => addToArray('contractual_obligations', { callType: '', responseTime: '', requirements: '' }),
+                            className: "flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm transition-colors"
                         },
                             React.createElement(Icon, { type: 'plus', className: "h-4 w-4" }),
                             React.createElement('span', null, "Add Contractual Obligation")
@@ -577,16 +573,17 @@
                         React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Contracted Service"),
                         React.createElement('input', {
                             type: "text",
-                            value: entity.contracted_service,
-                            onChange: (e) => setEntity(prev => ({ ...prev, contracted_service: e.target.value })),
-                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            value: newEntity.contracted_service,
+                            onChange: (e) => setNewEntity(prev => ({ ...prev, contracted_service: e.target.value })),
+                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                            placeholder: "Enter contracted service details"
                         })
                     ),
-                    entity.type === 'facility' && React.createElement('div', null,
+                    newEntity.type === 'facility' && React.createElement('div', null,
                         React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "ER Entrance Information"),
                         React.createElement('textarea', {
-                            value: entity.er_entrance,
-                            onChange: (e) => setEntity(prev => ({ ...prev, er_entrance: e.target.value })),
+                            value: newEntity.er_entrance,
+                            onChange: (e) => setNewEntity(prev => ({ ...prev, er_entrance: e.target.value })),
                             className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
                             rows: "3",
                             placeholder: "Describe ER entrance location and access details..."
@@ -599,11 +596,8 @@
                                 React.createElement('label', { className: "flex items-center" },
                                     React.createElement('input', {
                                         type: "checkbox",
-                                        checked: entity.flight_program?.isOneCall || false,
-                                        onChange: (e) => setEntity(prev => ({
-                                            ...prev,
-                                            flight_program: { ...prev.flight_program, isOneCall: e.target.checked }
-                                        })),
+                                        checked: newEntity.flight_program?.isOneCall || false,
+                                        onChange: (e) => updateNestedField('flight_program.isOneCall', e.target.checked),
                                         className: "mr-2"
                                     }),
                                     "One Call Facility/Center"
@@ -611,11 +605,8 @@
                                 React.createElement('label', { className: "flex items-center" },
                                     React.createElement('input', {
                                         type: "checkbox",
-                                        checked: entity.flight_program?.participating || false,
-                                        onChange: (e) => setEntity(prev => ({
-                                            ...prev,
-                                            flight_program: { ...prev.flight_program, participating: e.target.checked }
-                                        })),
+                                        checked: newEntity.flight_program?.participating || false,
+                                        onChange: (e) => updateNestedField('flight_program.participating', e.target.checked),
                                         className: "mr-2"
                                     }),
                                     "Flight Program Participant"
@@ -624,13 +615,11 @@
                             React.createElement('div', null,
                                 React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Flight Program Notes"),
                                 React.createElement('textarea', {
-                                    value: entity.flight_program?.notes || '',
-                                    onChange: (e) => setEntity(prev => ({
-                                        ...prev,
-                                        flight_program: { ...prev.flight_program, notes: e.target.value }
-                                    })),
-                                    className: "w-full px-3 py-2 border border-gray-300 rounded-md",
-                                    rows: "2"
+                                    value: newEntity.flight_program?.notes || '',
+                                    onChange: (e) => updateNestedField('flight_program.notes', e.target.value),
+                                    className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                                    rows: "2",
+                                    placeholder: "Additional flight program details..."
                                 })
                             )
                         )
@@ -638,17 +627,14 @@
                     React.createElement('div', { className: "border border-gray-200 rounded-md p-4" },
                         React.createElement('h4', { className: "font-medium text-gray-900 mb-3" }, "Backup Services"),
                         React.createElement('div', { className: "space-y-3" },
-                            entity.type === 'facility' ? [
+                            newEntity.type === 'facility' ? [
                                 React.createElement('div', { key: "air" },
                                     React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Air Service Backup"),
                                     React.createElement('input', {
                                         type: "text",
-                                        value: entity.backup_services?.airService || '',
-                                        onChange: (e) => setEntity(prev => ({
-                                            ...prev,
-                                            backup_services: { ...prev.backup_services, airService: e.target.value }
-                                        })),
-                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md",
+                                        value: newEntity.backup_services?.airService || '',
+                                        onChange: (e) => updateNestedField('backup_services.airService', e.target.value),
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
                                         placeholder: "Backup air service contact and distance"
                                     })
                                 ),
@@ -656,12 +642,9 @@
                                     React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Ground Service Backup"),
                                     React.createElement('input', {
                                         type: "text",
-                                        value: entity.backup_services?.groundService || '',
-                                        onChange: (e) => setEntity(prev => ({
-                                            ...prev,
-                                            backup_services: { ...prev.backup_services, groundService: e.target.value }
-                                        })),
-                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md",
+                                        value: newEntity.backup_services?.groundService || '',
+                                        onChange: (e) => updateNestedField('backup_services.groundService', e.target.value),
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
                                         placeholder: "Backup ground service contact and distance"
                                     })
                                 )
@@ -670,12 +653,9 @@
                                     React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "No Units Available Contact"),
                                     React.createElement('input', {
                                         type: "text",
-                                        value: entity.backup_services?.noUnitsContact || '',
-                                        onChange: (e) => setEntity(prev => ({
-                                            ...prev,
-                                            backup_services: { ...prev.backup_services, noUnitsContact: e.target.value }
-                                        })),
-                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md",
+                                        value: newEntity.backup_services?.noUnitsContact || '',
+                                        onChange: (e) => updateNestedField('backup_services.noUnitsContact', e.target.value),
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
                                         placeholder: "Contact when no units available"
                                     })
                                 ),
@@ -683,55 +663,46 @@
                                     React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Mutual Aid Contact"),
                                     React.createElement('input', {
                                         type: "text",
-                                        value: entity.backup_services?.mutualAid || '',
-                                        onChange: (e) => setEntity(prev => ({
-                                            ...prev,
-                                            backup_services: { ...prev.backup_services, mutualAid: e.target.value }
-                                        })),
-                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md",
+                                        value: newEntity.backup_services?.mutualAid || '',
+                                        onChange: (e) => updateNestedField('backup_services.mutualAid', e.target.value),
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
                                         placeholder: "Mutual aid coordination contact"
                                     })
                                 )
                             ]
                         )
                     ),
-                    entity.type === '911center' && React.createElement('div', { className: "border border-gray-200 rounded-md p-4" },
+                    newEntity.type === '911center' && React.createElement('div', { className: "border border-gray-200 rounded-md p-4" },
                         React.createElement('h4', { className: "font-medium text-gray-900 mb-3" }, "Coverage Information"),
                         React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-3 gap-3" },
                             React.createElement('div', null,
                                 React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Coverage Area"),
                                 React.createElement('input', {
                                     type: "text",
-                                    value: entity.county_info?.coverage || '',
-                                    onChange: (e) => setEntity(prev => ({
-                                        ...prev,
-                                        county_info: { ...prev.county_info, coverage: e.target.value }
-                                    })),
-                                    className: "w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    value: newEntity.county_info?.coverage || '',
+                                    onChange: (e) => updateNestedField('county_info.coverage', e.target.value),
+                                    className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                                    placeholder: "County or region"
                                 })
                             ),
                             React.createElement('div', null,
                                 React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Population"),
                                 React.createElement('input', {
                                     type: "text",
-                                    value: entity.county_info?.population || '',
-                                    onChange: (e) => setEntity(prev => ({
-                                        ...prev,
-                                        county_info: { ...prev.county_info, population: e.target.value }
-                                    })),
-                                    className: "w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    value: newEntity.county_info?.population || '',
+                                    onChange: (e) => updateNestedField('county_info.population', e.target.value),
+                                    className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                                    placeholder: "Population count"
                                 })
                             ),
                             React.createElement('div', null,
                                 React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Square Miles"),
                                 React.createElement('input', {
                                     type: "text",
-                                    value: entity.county_info?.squareMiles || '',
-                                    onChange: (e) => setEntity(prev => ({
-                                        ...prev,
-                                        county_info: { ...prev.county_info, squareMiles: e.target.value }
-                                    })),
-                                    className: "w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    value: newEntity.county_info?.squareMiles || '',
+                                    onChange: (e) => updateNestedField('county_info.squareMiles', e.target.value),
+                                    className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                                    placeholder: "Coverage area"
                                 })
                             )
                         )
@@ -739,15 +710,15 @@
                     React.createElement('div', null,
                         React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Notes"),
                         React.createElement('textarea', {
-                            value: entity.notes,
-                            onChange: (e) => setEntity(prev => ({ ...prev, notes: e.target.value })),
+                            value: newEntity.notes,
+                            onChange: (e) => setNewEntity(prev => ({ ...prev, notes: e.target.value })),
                             className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
                             rows: "3",
                             placeholder: "Operational notes and important information..."
                         })
                     )
                 )
-            );
+            ));
 
             if (!isPortalAuthenticated) {
                 return React.createElement(PortalLogin);
@@ -774,12 +745,12 @@
                                     React.createElement('h3', { className: "text-xl font-semibold" }, "Add New Entity"),
                                     React.createElement('button', {
                                         onClick: () => setShowAdmin(false),
-                                        className: "p-2 hover:bg-gray-100 rounded-md"
+                                        className: "p-2 hover:bg-gray-100 rounded-md transition-colors"
                                     }, React.createElement(Icon, { type: 'x', className: "h-5 w-5" }))
                                 )
                             ),
                             React.createElement('div', { className: "p-6" },
-                                React.createElement(AdminForm, { entity: newEntity, setEntity: setNewEntity, isNew: true }),
+                                React.createElement(AdminForm),
                                 React.createElement('div', { className: "flex justify-end space-x-2 mt-6" },
                                     React.createElement('button', {
                                         onClick: () => setShowAdmin(false),
