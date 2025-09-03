@@ -953,14 +953,90 @@
                                             "Backup Services"
                                         ),
                                         selectedEntity.type === 'facility' ? React.createElement('div', { className: "space-y-4" },
+                                            // Air Service Backups
+                                            selectedEntity.backupServices.airBackup1 || selectedEntity.backupServices.airBackup2 ? 
                                             React.createElement('div', null,
+                                                React.createElement('h4', { className: "font-medium text-gray-900 mb-2 flex items-center" },
+                                                    React.createElement(Icon, { type: 'plane', className: "h-4 w-4 mr-1" }),
+                                                    "Air Service Backups"
+                                                ),
+                                                React.createElement('div', { className: "space-y-2 pl-5" },
+                                                    selectedEntity.backupServices.airBackup1?.service && React.createElement('div', { className: "bg-orange-50 p-3 rounded-md" },
+                                                        React.createElement('div', { className: "flex justify-between items-start" },
+                                                            React.createElement('div', null,
+                                                                React.createElement('span', { className: "font-medium text-gray-900" }, "Backup 1: "),
+                                                                React.createElement('span', { className: "text-gray-700" }, selectedEntity.backupServices.airBackup1.service)
+                                                            ),
+                                                            selectedEntity.backupServices.airBackup1.phone && React.createElement('span', { className: "font-mono text-blue-600" }, selectedEntity.backupServices.airBackup1.phone)
+                                                        )
+                                                    ),
+                                                    selectedEntity.backupServices.airBackup2?.service && React.createElement('div', { className: "bg-orange-50 p-3 rounded-md" },
+                                                        React.createElement('div', { className: "flex justify-between items-start" },
+                                                            React.createElement('div', null,
+                                                                React.createElement('span', { className: "font-medium text-gray-900" }, "Backup 2: "),
+                                                                React.createElement('span', { className: "text-gray-700" }, selectedEntity.backupServices.airBackup2.service)
+                                                            ),
+                                                            selectedEntity.backupServices.airBackup2.phone && React.createElement('span', { className: "font-mono text-blue-600" }, selectedEntity.backupServices.airBackup2.phone)
+                                                        )
+                                                    )
+                                                )
+                                            ) : null,
+                                            // Ground Service Backups
+                                            selectedEntity.backupServices.groundBackup1 || selectedEntity.backupServices.groundBackup2 || 
+                                            selectedEntity.backupServices.groundBackup3 || selectedEntity.backupServices.groundBackup4 ?
+                                            React.createElement('div', null,
+                                                React.createElement('h4', { className: "font-medium text-gray-900 mb-2 flex items-center" },
+                                                    React.createElement(Icon, { type: 'truck', className: "h-4 w-4 mr-1" }),
+                                                    "Ground Service Backups"
+                                                ),
+                                                React.createElement('div', { className: "space-y-2 pl-5" },
+                                                    selectedEntity.backupServices.groundBackup1?.service && React.createElement('div', { className: "bg-blue-50 p-3 rounded-md" },
+                                                        React.createElement('div', { className: "flex justify-between items-start" },
+                                                            React.createElement('div', null,
+                                                                React.createElement('span', { className: "font-medium text-gray-900" }, "Backup 1: "),
+                                                                React.createElement('span', { className: "text-gray-700" }, selectedEntity.backupServices.groundBackup1.service)
+                                                            ),
+                                                            selectedEntity.backupServices.groundBackup1.phone && React.createElement('span', { className: "font-mono text-blue-600" }, selectedEntity.backupServices.groundBackup1.phone)
+                                                        )
+                                                    ),
+                                                    selectedEntity.backupServices.groundBackup2?.service && React.createElement('div', { className: "bg-blue-50 p-3 rounded-md" },
+                                                        React.createElement('div', { className: "flex justify-between items-start" },
+                                                            React.createElement('div', null,
+                                                                React.createElement('span', { className: "font-medium text-gray-900" }, "Backup 2: "),
+                                                                React.createElement('span', { className: "text-gray-700" }, selectedEntity.backupServices.groundBackup2.service)
+                                                            ),
+                                                            selectedEntity.backupServices.groundBackup2.phone && React.createElement('span', { className: "font-mono text-blue-600" }, selectedEntity.backupServices.groundBackup2.phone)
+                                                        )
+                                                    ),
+                                                    selectedEntity.backupServices.groundBackup3?.service && React.createElement('div', { className: "bg-blue-50 p-3 rounded-md" },
+                                                        React.createElement('div', { className: "flex justify-between items-start" },
+                                                            React.createElement('div', null,
+                                                                React.createElement('span', { className: "font-medium text-gray-900" }, "Backup 3: "),
+                                                                React.createElement('span', { className: "text-gray-700" }, selectedEntity.backupServices.groundBackup3.service)
+                                                            ),
+                                                            selectedEntity.backupServices.groundBackup3.phone && React.createElement('span', { className: "font-mono text-blue-600" }, selectedEntity.backupServices.groundBackup3.phone)
+                                                        )
+                                                    ),
+                                                    selectedEntity.backupServices.groundBackup4?.service && React.createElement('div', { className: "bg-blue-50 p-3 rounded-md" },
+                                                        React.createElement('div', { className: "flex justify-between items-start" },
+                                                            React.createElement('div', null,
+                                                                React.createElement('span', { className: "font-medium text-gray-900" }, "Backup 4: "),
+                                                                React.createElement('span', { className: "text-gray-700" }, selectedEntity.backupServices.groundBackup4.service)
+                                                            ),
+                                                            selectedEntity.backupServices.groundBackup4.phone && React.createElement('span', { className: "font-mono text-blue-600" }, selectedEntity.backupServices.groundBackup4.phone)
+                                                        )
+                                                    )
+                                                )
+                                            ) : null,
+                                            // Legacy display for old data format
+                                            selectedEntity.backupServices.airService && React.createElement('div', null,
                                                 React.createElement('h4', { className: "font-medium text-gray-900 mb-2 flex items-center" },
                                                     React.createElement(Icon, { type: 'plane', className: "h-4 w-4 mr-1" }),
                                                     "Air Service Backup"
                                                 ),
                                                 React.createElement('p', { className: "text-gray-700 bg-orange-50 p-3 rounded-md font-medium" }, selectedEntity.backupServices.airService)
                                             ),
-                                            React.createElement('div', null,
+                                            selectedEntity.backupServices.groundService && React.createElement('div', null,
                                                 React.createElement('h4', { className: "font-medium text-gray-900 mb-2 flex items-center" },
                                                     React.createElement(Icon, { type: 'truck', className: "h-4 w-4 mr-1" }),
                                                     "Ground Service Backup"
