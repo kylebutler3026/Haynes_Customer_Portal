@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emergency Services Portal</title>
+    <title>Customer/Call Source Portal</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -27,10 +27,33 @@
         .icon-logout { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1'/%3E%3C/svg%3E") center/contain no-repeat; }
         .icon-sync { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'/%3E%3C/svg%3E") center/contain no-repeat; }
         .icon-edit { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'/%3E%3C/svg%3E") center/contain no-repeat; }
+        .icon-dispatch { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9'/%3E%3C/svg%3E") center/contain no-repeat; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #1a365d 0%, #2563eb 100%);
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .entity-card {
+            transition: all 0.2s ease;
+        }
+        
+        .entity-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
     </style>
 <script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
 </head>
-<body>
+<body class="bg-gray-50">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -183,17 +206,17 @@
 
             return (
                 <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl mx-auto">
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">{entityToEdit ? 'Edit Entity' : 'Add New Entity'}</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-3">{entityToEdit ? 'Edit Entity' : 'Add New Entity'}</h2>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Basic Information */}
                         <div className="bg-gray-50 p-4 rounded-md">
-                            <h3 className="font-medium text-gray-900 mb-3">Basic Information</h3>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Basic Information</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                                     <input
                                         type="text"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={formData.name}
                                         onChange={(e) => updateField('name', e.target.value)}
                                         required
@@ -202,7 +225,7 @@
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                                     <select
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={formData.type}
                                         onChange={(e) => updateField('type', e.target.value)}
                                     >
@@ -211,6 +234,7 @@
                                         <option value="fire_station">Fire Station</option>
                                         <option value="police_station">Police Station</option>
                                         <option value="ems_station">EMS Station</option>
+                                        <option value="911_center">911 Center</option>
                                         <option value="other">Other</option>
                                     </select>
                                 </div>
@@ -219,7 +243,7 @@
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                                 <input
                                     type="text"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     value={formData.address}
                                     onChange={(e) => updateField('address', e.target.value)}
                                 />
@@ -228,19 +252,19 @@
 
                         {/* Phone Numbers */}
                         <div className="bg-gray-50 p-4 rounded-md">
-                            <h3 className="font-medium text-gray-900 mb-3">Phone Numbers</h3>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Phone Numbers</h3>
                             {formData.phone_numbers.map((phone, index) => (
                                 <div key={index} className="flex items-center space-x-2 mb-2">
                                     <input
                                         type="text"
-                                        className="w-1/3 px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-1/3 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={phone.label}
                                         onChange={(e) => updatePhoneNumber(index, 'label', e.target.value)}
                                         placeholder="Label"
                                     />
                                     <input
                                         type="text"
-                                        className="w-2/3 px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-2/3 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={phone.number}
                                         onChange={(e) => updatePhoneNumber(index, 'number', e.target.value)}
                                         placeholder="Number"
@@ -248,7 +272,7 @@
                                     {index > 0 && (
                                         <button
                                             type="button"
-                                            className="p-2 bg-red-100 text-red-600 rounded-md"
+                                            className="p-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors"
                                             onClick={() => removePhoneNumber(index)}
                                         >
                                             <Icon type="trash" />
@@ -258,7 +282,7 @@
                             ))}
                             <button
                                 type="button"
-                                className="mt-2 flex items-center text-sm text-blue-600"
+                                className="mt-2 flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors"
                                 onClick={addPhoneNumber}
                             >
                                 <Icon type="plus" className="mr-1" /> Add Phone Number
@@ -267,12 +291,12 @@
 
                         {/* Contracted Service */}
                         <div className="bg-gray-50 p-4 rounded-md">
-                            <h3 className="font-medium text-gray-900 mb-3">Contracted Service</h3>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Contracted Service</h3>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Service Provider</label>
                                 <input
                                     type="text"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     value={formData.contracted_service}
                                     onChange={(e) => updateField('contracted_service', e.target.value)}
                                     placeholder="Service provider name"
@@ -285,14 +309,14 @@
                                     <div key={index} className="flex items-center space-x-2 mb-2">
                                         <input
                                             type="text"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             value={obligation}
                                             onChange={(e) => updateContractualObligation(index, e.target.value)}
                                             placeholder="Obligation details"
                                         />
                                         <button
                                             type="button"
-                                            className="p-2 bg-red-100 text-red-600 rounded-md"
+                                            className="p-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors"
                                             onClick={() => removeContractualObligation(index)}
                                         >
                                             <Icon type="trash" />
@@ -301,7 +325,7 @@
                                 ))}
                                 <button
                                     type="button"
-                                    className="mt-2 flex items-center text-sm text-blue-600"
+                                    className="mt-2 flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors"
                                     onClick={addContractualObligation}
                                 >
                                     <Icon type="plus" className="mr-1" /> Add Obligation
@@ -312,11 +336,11 @@
                         {/* ER Entrance */}
                         {formData.type === 'hospital' && (
                             <div className="bg-gray-50 p-4 rounded-md">
-                                <h3 className="font-medium text-gray-900 mb-3">ER Entrance</h3>
+                                <h3 className="font-medium text-gray-900 mb-3 text-lg">ER Entrance</h3>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Entrance Details</label>
                                     <textarea
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={formData.er_entrance}
                                         onChange={(e) => updateField('er_entrance', e.target.value)}
                                         placeholder="Describe the ER entrance location and access details"
@@ -328,42 +352,42 @@
 
                         {/* Flight Program */}
                         <div className="bg-gray-50 p-4 rounded-md">
-                            <h3 className="font-medium text-gray-900 mb-3">Flight Program</h3>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Flight Program</h3>
                             <div className="space-y-2">
                                 <div className="flex items-center">
                                     <input
                                         type="checkbox"
                                         id="isOneCall"
-                                        className="mr-2"
+                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                         checked={formData.flight_program.isOneCall}
                                         onChange={(e) => updateNestedField('flight_program', 'isOneCall', e.target.checked)}
                                     />
-                                    <label htmlFor="isOneCall" className="text-sm text-gray-700">Is One Call</label>
+                                    <label htmlFor="isOneCall" className="ml-2 text-sm text-gray-700">Is One Call</label>
                                 </div>
                                 <div className="flex items-center">
                                     <input
                                         type="checkbox"
                                         id="participating"
-                                        className="mr-2"
+                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                         checked={formData.flight_program.participating}
                                         onChange={(e) => updateNestedField('flight_program', 'participating', e.target.checked)}
                                     />
-                                    <label htmlFor="participating" className="text-sm text-gray-700">Participating</label>
+                                    <label htmlFor="participating" className="ml-2 text-sm text-gray-700">Participating</label>
                                 </div>
                                 <div className="flex items-center">
                                     <input
                                         type="checkbox"
                                         id="flightByGround"
-                                        className="mr-2"
+                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                         checked={formData.flight_program.flightByGround}
                                         onChange={(e) => updateNestedField('flight_program', 'flightByGround', e.target.checked)}
                                     />
-                                    <label htmlFor="flightByGround" className="text-sm text-gray-700">Flight By Ground</label>
+                                    <label htmlFor="flightByGround" className="ml-2 text-sm text-gray-700">Flight By Ground</label>
                                 </div>
                                 <div className="mt-2">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                                     <textarea
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={formData.flight_program.notes}
                                         onChange={(e) => updateNestedField('flight_program', 'notes', e.target.value)}
                                         placeholder="Additional flight program notes"
@@ -375,12 +399,12 @@
 
                         {/* Backup Services */}
                         <div className="bg-gray-50 p-4 rounded-md">
-                            <h4 className="font-medium text-gray-900 mb-3">Backup Services</h4>
+                            <h4 className="font-medium text-gray-900 mb-3 text-lg">Backup Services</h4>
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Air Service Backup</label>
                                     <textarea
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={formData.backup_services.airService}
                                         onChange={(e) => updateNestedField('backup_services', 'airService', e.target.value)}
                                         placeholder="Backup air service contact and distance"
@@ -390,7 +414,7 @@
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Ground Service Backup</label>
                                     <textarea
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={formData.backup_services.groundService}
                                         onChange={(e) => updateNestedField('backup_services', 'groundService', e.target.value)}
                                         placeholder="Backup ground service contact and distance"
@@ -400,7 +424,7 @@
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">No Units Contact</label>
                                     <textarea
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={formData.backup_services.noUnitsContact}
                                         onChange={(e) => updateNestedField('backup_services', 'noUnitsContact', e.target.value)}
                                         placeholder="Contact when no units are available"
@@ -410,7 +434,7 @@
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Mutual Aid</label>
                                     <textarea
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={formData.backup_services.mutualAid}
                                         onChange={(e) => updateNestedField('backup_services', 'mutualAid', e.target.value)}
                                         placeholder="Mutual aid agreements"
@@ -422,13 +446,13 @@
 
                         {/* County Information */}
                         <div className="bg-gray-50 p-4 rounded-md">
-                            <h3 className="font-medium text-gray-900 mb-3">County Information</h3>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg">County Information</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">County</label>
                                     <input
                                         type="text"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={formData.county_info.county}
                                         onChange={(e) => updateNestedField('county_info', 'county', e.target.value)}
                                     />
@@ -437,7 +461,7 @@
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Sheriff</label>
                                     <input
                                         type="text"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={formData.county_info.sheriff}
                                         onChange={(e) => updateNestedField('county_info', 'sheriff', e.target.value)}
                                     />
@@ -446,7 +470,7 @@
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Fire</label>
                                     <input
                                         type="text"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={formData.county_info.fire}
                                         onChange={(e) => updateNestedField('county_info', 'fire', e.target.value)}
                                     />
@@ -455,7 +479,7 @@
                                     <label className="block text-sm font-medium text-gray-700 mb-1">EMS</label>
                                     <input
                                         type="text"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={formData.county_info.ems}
                                         onChange={(e) => updateNestedField('county_info', 'ems', e.target.value)}
                                     />
@@ -465,9 +489,9 @@
 
                         {/* Notes */}
                         <div className="bg-gray-50 p-4 rounded-md">
-                            <h3 className="font-medium text-gray-900 mb-3">Additional Notes</h3>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Additional Notes</h3>
                             <textarea
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 value={formData.notes}
                                 onChange={(e) => updateField('notes', e.target.value)}
                                 placeholder="Any additional information"
@@ -476,17 +500,17 @@
                         </div>
 
                         {/* Form Actions */}
-                        <div className="flex justify-end space-x-3">
+                        <div className="flex justify-end space-x-3 pt-4 border-t">
                             <button
                                 type="button"
-                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
+                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
                                 onClick={onCancel}
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
-                                className="px-4 py-2 bg-blue-600 text-white rounded-md"
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                             >
                                 {entityToEdit ? 'Update Entity' : 'Save Entity'}
                             </button>
@@ -502,19 +526,19 @@
 
             return (
                 <div className="bg-white rounded-lg shadow-lg p-6 max-w-4xl mx-auto">
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-4 border-b pb-3">
                         <h2 className="text-2xl font-bold text-gray-800">{entity.name}</h2>
                         <div className="flex space-x-2">
                             {isAdmin && (
                                 <>
                                     <button 
-                                        className="p-2 bg-blue-100 text-blue-600 rounded-md flex items-center"
+                                        className="px-3 py-1.5 bg-blue-100 text-blue-600 rounded-md flex items-center hover:bg-blue-200 transition-colors"
                                         onClick={() => onEdit(entity)}
                                     >
                                         <Icon type="edit" className="mr-1" /> Edit
                                     </button>
                                     <button 
-                                        className="p-2 bg-red-100 text-red-600 rounded-md flex items-center"
+                                        className="px-3 py-1.5 bg-red-100 text-red-600 rounded-md flex items-center hover:bg-red-200 transition-colors"
                                         onClick={() => onDelete(entity.id)}
                                     >
                                         <Icon type="trash" className="mr-1" /> Delete
@@ -522,7 +546,7 @@
                                 </>
                             )}
                             <button 
-                                className="p-2 bg-gray-100 text-gray-600 rounded-md"
+                                className="p-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
                                 onClick={onClose}
                             >
                                 <Icon type="x" />
@@ -532,12 +556,17 @@
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Basic Information */}
-                        <div className="bg-gray-50 p-4 rounded-md">
-                            <h3 className="font-medium text-gray-900 mb-3 flex items-center">
-                                <Icon type={entity.type === 'hospital' ? 'building' : entity.type === 'fire_station' ? 'alert' : 'users'} className="mr-2" />
+                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
+                            <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
+                                <Icon type={
+                                    entity.type === 'hospital' ? 'building' : 
+                                    entity.type === 'fire_station' ? 'alert' : 
+                                    entity.type === '911_center' ? 'dispatch' : 
+                                    'users'
+                                } className="mr-2" />
                                 Basic Information
                             </h3>
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 <div className="flex items-start">
                                     <div className="w-8 flex-shrink-0 flex justify-center">
                                         <Icon type="building" />
@@ -569,12 +598,12 @@
                         </div>
 
                         {/* Phone Numbers */}
-                        <div className="bg-gray-50 p-4 rounded-md">
-                            <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
+                            <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
                                 <Icon type="phone" className="mr-2" />
                                 Contact Information
                             </h3>
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 {entity.phoneNumbers && entity.phoneNumbers.length > 0 ? (
                                     entity.phoneNumbers.map((phone, index) => (
                                         <div key={index} className="flex items-start">
@@ -595,8 +624,8 @@
 
                         {/* Contracted Service */}
                         {entity.contractedService && (
-                            <div className="bg-gray-50 p-4 rounded-md">
-                                <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                            <div className="bg-gray-50 p-4 rounded-md shadow-sm">
+                                <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
                                     <Icon type="truck" className="mr-2" />
                                     Contracted Service
                                 </h3>
@@ -617,8 +646,8 @@
 
                         {/* ER Entrance */}
                         {entity.type === 'hospital' && entity.erEntrance && (
-                            <div className="bg-gray-50 p-4 rounded-md">
-                                <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                            <div className="bg-gray-50 p-4 rounded-md shadow-sm">
+                                <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
                                     <Icon type="alert" className="mr-2" />
                                     ER Entrance
                                 </h3>
@@ -627,12 +656,12 @@
                         )}
 
                         {/* Flight Program */}
-                        <div className="bg-gray-50 p-4 rounded-md">
-                            <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
+                            <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
                                 <Icon type="plane" className="mr-2" />
                                 Flight Program
                             </h3>
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 <div className="flex items-center">
                                     <div className="w-8 flex-shrink-0">
                                         {entity.flightProgram?.isOneCall ? (
@@ -673,8 +702,8 @@
                         </div>
 
                         {/* Backup Services */}
-                        <div className="bg-gray-50 p-4 rounded-md">
-                            <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
+                            <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
                                 <Icon type="alert" className="mr-2" />
                                 Backup Services
                             </h3>
@@ -718,8 +747,8 @@
                         </div>
 
                         {/* County Information */}
-                        <div className="bg-gray-50 p-4 rounded-md">
-                            <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
+                            <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
                                 <Icon type="map" className="mr-2" />
                                 County Information
                             </h3>
@@ -745,8 +774,8 @@
 
                         {/* Notes */}
                         {entity.notes && (
-                            <div className="bg-gray-50 p-4 rounded-md md:col-span-2">
-                                <h3 className="font-medium text-gray-900 mb-3">Additional Notes</h3>
+                            <div className="bg-gray-50 p-4 rounded-md md:col-span-2 shadow-sm">
+                                <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Additional Notes</h3>
                                 <p className="text-gray-700 whitespace-pre-wrap">{entity.notes}</p>
                             </div>
                         )}
@@ -770,7 +799,7 @@
             return (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="flex justify-between items-center mb-4 border-b pb-3">
                             <h3 className="text-xl font-medium text-gray-900 flex items-center">
                                 <Icon type="lock" className="mr-2" />
                                 {title}
@@ -785,7 +814,7 @@
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                                 <input
                                     type="password"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
@@ -794,7 +823,7 @@
                             <div className="flex justify-end">
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-md"
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                                 >
                                     Submit
                                 </button>
@@ -904,7 +933,7 @@
 
             const handleAdminPasswordSubmit = (password) => {
                 // In a real app, this would be a secure authentication process
-                if (password === 'admin123') {
+                if (password === '04911') {
                     setIsAdminAuthenticated(true);
                     setShowAdminPasswordModal(false);
                     
@@ -912,6 +941,8 @@
                         setShowAdmin(true);
                     } else if (adminAction === 'export') {
                         handleExportData();
+                    } else if (adminAction === 'edit') {
+                        setShowAdmin(true);
                     }
                 } else {
                     alert('Incorrect password');
@@ -920,7 +951,7 @@
 
             const handlePortalPasswordSubmit = (password) => {
                 // In a real app, this would be a secure authentication process
-                if (password === 'portal123') {
+                if (password === 'dispatch2024') {
                     setIsPortalAuthenticated(true);
                     setShowAdminPasswordModal(false);
                 } else {
@@ -943,7 +974,7 @@
                 
                 const link = document.createElement('a');
                 link.href = dataUri;
-                link.download = `emergency-entities-backup-${new Date().toISOString().split('T')[0]}.json`;
+                link.download = `customer-call-source-backup-${new Date().toISOString().split('T')[0]}.json`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -1037,28 +1068,40 @@
                 entity.type.toLowerCase().includes(searchTerm.toLowerCase())
             );
 
+            // Group entities by type
+            const groupedEntities = useMemo(() => {
+                const groups = {};
+                filteredEntities.forEach(entity => {
+                    if (!groups[entity.type]) {
+                        groups[entity.type] = [];
+                    }
+                    groups[entity.type].push(entity);
+                });
+                return groups;
+            }, [filteredEntities]);
+
             // If not authenticated to the portal, show login screen
             if (!isPortalAuthenticated) {
                 return (
-                    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-                        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-                            <div className="text-center mb-6">
-                                <h1 className="text-2xl font-bold text-gray-900">Emergency Services Portal</h1>
-                                <p className="text-gray-600 mt-2">Please enter the password to access the portal</p>
+                    <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
+                            <div className="text-center mb-8">
+                                <h1 className="text-3xl font-bold text-gray-900 mb-2">Customer/Call Source Portal</h1>
+                                <p className="text-gray-600">Please enter your password to access the portal</p>
                             </div>
                             <form onSubmit={(e) => {
                                 e.preventDefault();
                                 handlePortalPasswordSubmit(portalPasswordInput);
                             }}>
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                <div className="mb-6">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                             <Icon type="lock" />
                                         </div>
                                         <input
                                             type="password"
-                                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+                                            className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             value={portalPasswordInput}
                                             onChange={(e) => setPortalPasswordInput(e.target.value)}
                                             required
@@ -1067,22 +1110,25 @@
                                 </div>
                                 <button
                                     type="submit"
-                                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-md"
+                                    className="w-full px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
                                 >
                                     Access Portal
                                 </button>
                             </form>
+                            <div className="mt-6 text-center text-sm text-gray-500">
+                                <p>\u00a9 2025 Customer/Call Source Portal. All rights reserved.</p>
+                            </div>
                         </div>
                     </div>
                 );
             }
 
             return (
-                <div className="min-h-screen bg-gray-100">
+                <div className="min-h-screen bg-gray-50">
                     {/* Header */}
-                    <header className="bg-white shadow">
+                    <header className="bg-white shadow-sm">
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-                            <h1 className="text-2xl font-bold text-gray-900">Emergency Services Portal</h1>
+                            <h1 className="text-2xl font-bold text-gray-900">Customer/Call Source Portal</h1>
                             <div className="flex items-center space-x-4">
                                 {lastSync && (
                                     <div className="text-sm text-gray-500 flex items-center">
@@ -1091,21 +1137,21 @@
                                     </div>
                                 )}
                                 <button
-                                    className="p-2 bg-blue-100 text-blue-600 rounded-md flex items-center"
+                                    className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center"
                                     onClick={handleAdminClick}
                                 >
                                     <Icon type="plus" className="mr-1" />
                                     Add Entity
                                 </button>
                                 <button
-                                    className="p-2 bg-gray-100 text-gray-600 rounded-md flex items-center"
+                                    className="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors flex items-center"
                                     onClick={handleExportClick}
                                 >
                                     <Icon type="sync" className="mr-1" />
                                     Export Data
                                 </button>
                                 <button
-                                    className="p-2 bg-red-100 text-red-600 rounded-md flex items-center"
+                                    className="px-3 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors flex items-center"
                                     onClick={() => setIsPortalAuthenticated(false)}
                                 >
                                     <Icon type="logout" className="mr-1" />
@@ -1125,7 +1171,7 @@
                                 </div>
                                 <input
                                     type="text"
-                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+                                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     placeholder="Search by name, address, or type..."
                                     value={searchTerm}
                                     onChange={handleSearch}
@@ -1139,72 +1185,320 @@
                                 <p className="text-gray-500">Loading entities...</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {filteredEntities.length > 0 ? (
-                                    filteredEntities.map(entity => (
-                                        <div
-                                            key={entity.id}
-                                            className="bg-white p-4 rounded-lg shadow cursor-pointer hover:shadow-md transition-shadow"
-                                            onClick={() => handleEntityClick(entity)}
-                                        >
-                                            <div className="flex justify-between items-start">
-                                                <h3 className="text-lg font-medium text-gray-900">{entity.name}</h3>
-                                                <div className={`px-2 py-1 rounded text-xs font-medium ${
-                                                    entity.type === 'hospital' ? 'bg-blue-100 text-blue-800' :
-                                                    entity.type === 'clinic' ? 'bg-green-100 text-green-800' :
-                                                    entity.type === 'fire_station' ? 'bg-red-100 text-red-800' :
-                                                    entity.type === 'police_station' ? 'bg-indigo-100 text-indigo-800' :
-                                                    entity.type === 'ems_station' ? 'bg-yellow-100 text-yellow-800' :
-                                                    'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                    {entity.type.replace('_', ' ')}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {/* Left Column: Entity List */}
+                                <div className="md:col-span-1 space-y-6">
+                                    {Object.entries(groupedEntities).length > 0 ? (
+                                        Object.entries(groupedEntities).map(([type, typeEntities]) => (
+                                            <div key={type} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                                                <div className="bg-gray-50 px-4 py-3 border-b">
+                                                    <h2 className="text-lg font-medium text-gray-900 capitalize">
+                                                        {type.replace('_', ' ')}s ({typeEntities.length})
+                                                    </h2>
                                                 </div>
+                                                <ul className="divide-y divide-gray-200">
+                                                    {typeEntities.map(entity => (
+                                                        <li
+                                                            key={entity.id}
+                                                            className={`px-4 py-3 cursor-pointer hover:bg-gray-50 entity-card ${selectedEntity && selectedEntity.id === entity.id ? 'bg-blue-50' : ''}`}
+                                                            onClick={() => setSelectedEntity(entity)}
+                                                        >
+                                                            <div className="flex justify-between items-center">
+                                                                <div>
+                                                                    <h3 className="text-sm font-medium text-gray-900">{entity.name}</h3>
+                                                                    {entity.address && (
+                                                                        <p className="text-xs text-gray-500 flex items-center mt-1">
+                                                                            <Icon type="map" className="mr-1" />
+                                                                            {entity.address}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                                {isAdminAuthenticated && (
+                                                                    <div className="flex space-x-1">
+                                                                        <button
+                                                                            className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleEditEntity(entity);
+                                                                            }}
+                                                                        >
+                                                                            <Icon type="edit" />
+                                                                        </button>
+                                                                        <button
+                                                                            className="p-1 text-red-600 hover:text-red-800 transition-colors"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleDeleteEntity(entity.id);
+                                                                            }}
+                                                                        >
+                                                                            <Icon type="trash" />
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                                </ul>
                                             </div>
-                                            <p className="text-gray-500 text-sm mt-1">{entity.address}</p>
-                                            
-                                            <div className="mt-3 flex items-center text-sm text-gray-500">
-                                                <Icon type="phone" className="mr-1" />
-                                                <span>{entity.phoneNumbers && entity.phoneNumbers.length > 0 ? 
-                                                    `${entity.phoneNumbers.length} contact${entity.phoneNumbers.length > 1 ? 's' : ''}` : 
-                                                    'No contacts'}
-                                                </span>
-                                            </div>
-                                            
-                                            {entity.lastContact && (
-                                                <div className="mt-1 flex items-center text-sm text-gray-500">
-                                                    <Icon type="calendar" className="mr-1" />
-                                                    <span>Last contact: {entity.lastContact}</span>
-                                                </div>
-                                            )}
+                                        ))
+                                    ) : (
+                                        <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+                                            <p className="text-gray-500">No entities found matching your search.</p>
                                         </div>
-                                    ))
-                                ) : (
-                                    <div className="col-span-3 text-center py-10">
-                                        <p className="text-gray-500">No entities found matching your search.</p>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
+
+                                {/* Right Column: Entity Details */}
+                                <div className="md:col-span-2">
+                                    {selectedEntity ? (
+                                        <div className="bg-white rounded-lg shadow-sm">
+                                            <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+                                                <h2 className="text-xl font-bold text-gray-900">{selectedEntity.name}</h2>
+                                                <div className="flex space-x-2">
+                                                    {isAdminAuthenticated && (
+                                                        <>
+                                                            <button
+                                                                className="px-3 py-1.5 bg-blue-100 text-blue-600 rounded-md flex items-center hover:bg-blue-200 transition-colors"
+                                                                onClick={() => handleEditEntity(selectedEntity)}
+                                                            >
+                                                                <Icon type="edit" className="mr-1" /> Edit
+                                                            </button>
+                                                            <button
+                                                                className="px-3 py-1.5 bg-red-100 text-red-600 rounded-md flex items-center hover:bg-red-200 transition-colors"
+                                                                onClick={() => handleDeleteEntity(selectedEntity.id)}
+                                                            >
+                                                                <Icon type="trash" className="mr-1" /> Delete
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="p-6 space-y-6">
+                                                {/* Basic Info */}
+                                                <div>
+                                                    <h3 className="text-lg font-medium text-gray-900 mb-3">Basic Information</h3>
+                                                    <div className="bg-gray-50 p-4 rounded-md">
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div>
+                                                                <p className="text-sm text-gray-500">Type</p>
+                                                                <p className="font-medium text-gray-900 capitalize">{selectedEntity.type.replace('_', ' ')}</p>
+                                                            </div>
+                                                            {selectedEntity.address && (
+                                                                <div>
+                                                                    <p className="text-sm text-gray-500">Address</p>
+                                                                    <p className="font-medium text-gray-900">{selectedEntity.address}</p>
+                                                                </div>
+                                                            )}
+                                                            {selectedEntity.lastContact && (
+                                                                <div>
+                                                                    <p className="text-sm text-gray-500">Last Contact</p>
+                                                                    <p className="font-medium text-gray-900">{selectedEntity.lastContact}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Phone Numbers */}
+                                                {selectedEntity.phoneNumbers && selectedEntity.phoneNumbers.length > 0 && (
+                                                    <div>
+                                                        <h3 className="text-lg font-medium text-gray-900 mb-3">Contact Information</h3>
+                                                        <div className="bg-gray-50 p-4 rounded-md">
+                                                            <div className="space-y-2">
+                                                                {selectedEntity.phoneNumbers.map((phone, index) => (
+                                                                    <div key={index} className="flex items-center">
+                                                                        <div className="w-24 text-sm font-medium text-gray-700 capitalize">
+                                                                            {phone.label}:
+                                                                        </div>
+                                                                        <div className="font-mono text-blue-600">{phone.number}</div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Contracted Service */}
+                                                {selectedEntity.contractedService && (
+                                                    <div>
+                                                        <h3 className="text-lg font-medium text-gray-900 mb-3">Contracted Service</h3>
+                                                        <div className="bg-gray-50 p-4 rounded-md">
+                                                            <p className="font-medium text-gray-900">{selectedEntity.contractedService}</p>
+                                                            {selectedEntity.contractualObligations && selectedEntity.contractualObligations.length > 0 && (
+                                                                <div className="mt-3">
+                                                                    <h4 className="text-sm font-medium text-gray-700 mb-2">Contractual Obligations:</h4>
+                                                                    <ul className="list-disc pl-5 space-y-1">
+                                                                        {selectedEntity.contractualObligations.map((obligation, index) => (
+                                                                            <li key={index} className="text-gray-700">{obligation}</li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* ER Entrance */}
+                                                {selectedEntity.type === 'hospital' && selectedEntity.erEntrance && (
+                                                    <div>
+                                                        <h3 className="text-lg font-medium text-gray-900 mb-3">ER Entrance</h3>
+                                                        <div className="bg-gray-50 p-4 rounded-md">
+                                                            <p className="text-gray-700">{selectedEntity.erEntrance}</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Flight Program */}
+                                                {selectedEntity.flightProgram && (
+                                                    <div>
+                                                        <h3 className="text-lg font-medium text-gray-900 mb-3">Flight Program</h3>
+                                                        <div className="bg-gray-50 p-4 rounded-md">
+                                                            <div className="space-y-2">
+                                                                <div className="flex items-center">
+                                                                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                                                        {selectedEntity.flightProgram.isOneCall ? (
+                                                                            <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                                                                        ) : (
+                                                                            <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="font-medium text-gray-900">One Call System</span>
+                                                                </div>
+                                                                <div className="flex items-center">
+                                                                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                                                        {selectedEntity.flightProgram.participating ? (
+                                                                            <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                                                                        ) : (
+                                                                            <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="font-medium text-gray-900">Participating in Flight Program</span>
+                                                                </div>
+                                                                <div className="flex items-center">
+                                                                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                                                                        {selectedEntity.flightProgram.flightByGround ? (
+                                                                            <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                                                                        ) : (
+                                                                            <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="font-medium text-gray-900">Flight by Ground</span>
+                                                                </div>
+                                                                {selectedEntity.flightProgram.notes && (
+                                                                    <div className="mt-3 pt-3 border-t border-gray-200">
+                                                                        <h4 className="text-sm font-medium text-gray-700 mb-1">Notes:</h4>
+                                                                        <p className="text-gray-700">{selectedEntity.flightProgram.notes}</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Backup Services */}
+                                                {selectedEntity.backupServices && Object.keys(selectedEntity.backupServices).some(key => selectedEntity.backupServices[key]) && (
+                                                    <div>
+                                                        <h3 className="text-lg font-medium text-gray-900 mb-3">Backup Services</h3>
+                                                        <div className="bg-gray-50 p-4 rounded-md space-y-4">
+                                                            {selectedEntity.backupServices.airService && (
+                                                                <div>
+                                                                    <h4 className="text-sm font-medium text-gray-700 mb-1">Air Service Backup</h4>
+                                                                    <p className="text-gray-700 bg-orange-50 p-3 rounded-md font-medium">{selectedEntity.backupServices.airService}</p>
+                                                                </div>
+                                                            )}
+                                                            {selectedEntity.backupServices.groundService && (
+                                                                <div>
+                                                                    <h4 className="text-sm font-medium text-gray-700 mb-1">Ground Service Backup</h4>
+                                                                    <p className="text-gray-700 bg-blue-50 p-3 rounded-md font-medium">{selectedEntity.backupServices.groundService}</p>
+                                                                </div>
+                                                            )}
+                                                            {selectedEntity.backupServices.noUnitsContact && (
+                                                                <div>
+                                                                    <h4 className="text-sm font-medium text-gray-700 mb-1">No Units Contact Protocol</h4>
+                                                                    <p className="text-gray-700 bg-red-50 p-3 rounded-md font-medium">{selectedEntity.backupServices.noUnitsContact}</p>
+                                                                </div>
+                                                            )}
+                                                            {selectedEntity.backupServices.mutualAid && (
+                                                                <div>
+                                                                    <h4 className="text-sm font-medium text-gray-700 mb-1">Mutual Aid Agreements</h4>
+                                                                    <p className="text-gray-700 bg-yellow-50 p-3 rounded-md font-medium">{selectedEntity.backupServices.mutualAid}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* County Information */}
+                                                {selectedEntity.countyInfo && Object.keys(selectedEntity.countyInfo).some(key => selectedEntity.countyInfo[key]) && (
+                                                    <div>
+                                                        <h3 className="text-lg font-medium text-gray-900 mb-3">County Information</h3>
+                                                        <div className="bg-gray-50 p-4 rounded-md">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                {selectedEntity.countyInfo.county && (
+                                                                    <div>
+                                                                        <p className="text-sm text-gray-500">County</p>
+                                                                        <p className="font-medium text-gray-900">{selectedEntity.countyInfo.county}</p>
+                                                                    </div>
+                                                                )}
+                                                                {selectedEntity.countyInfo.sheriff && (
+                                                                    <div>
+                                                                        <p className="text-sm text-gray-500">Sheriff</p>
+                                                                        <p className="font-medium text-gray-900">{selectedEntity.countyInfo.sheriff}</p>
+                                                                    </div>
+                                                                )}
+                                                                {selectedEntity.countyInfo.fire && (
+                                                                    <div>
+                                                                        <p className="text-sm text-gray-500">Fire</p>
+                                                                        <p className="font-medium text-gray-900">{selectedEntity.countyInfo.fire}</p>
+                                                                    </div>
+                                                                )}
+                                                                {selectedEntity.countyInfo.ems && (
+                                                                    <div>
+                                                                        <p className="text-sm text-gray-500">EMS</p>
+                                                                        <p className="font-medium text-gray-900">{selectedEntity.countyInfo.ems}</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Notes */}
+                                                {selectedEntity.notes && (
+                                                    <div>
+                                                        <h3 className="text-lg font-medium text-gray-900 mb-3">Additional Notes</h3>
+                                                        <div className="bg-gray-50 p-4 rounded-md">
+                                                            <p className="text-gray-700 whitespace-pre-wrap">{selectedEntity.notes}</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+                                            <p className="text-gray-500">Select an entity from the list to view details</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </main>
 
-                    {/* Entity Detail Modal */}
-                    {selectedEntity && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
-                            <div className="max-h-[90vh] overflow-y-auto w-full max-w-4xl">
-                                <EntityDetail 
-                                    entity={selectedEntity} 
-                                    onClose={handleCloseDetail}
-                                    onEdit={handleEditEntity}
-                                    onDelete={handleDeleteEntity}
-                                    isAdmin={isAdminAuthenticated}
-                                />
-                            </div>
-                        </div>
-                    )}
+                    {/* Password Modal */}
+                    <PasswordModal
+                        isOpen={showAdminPasswordModal}
+                        onClose={() => {
+                            setShowAdminPasswordModal(false);
+                            setAdminAction('');
+                        }}
+                        onSubmit={handleAdminPasswordSubmit}
+                        title="Admin Authentication"
+                        message="Please enter the admin password to continue."
+                    />
 
                     {/* Admin Form Modal */}
                     {showAdmin && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4 overflow-y-auto">
                             <div className="max-h-[90vh] overflow-y-auto w-full">
                                 <AdminForm 
                                     onSave={handleSaveNewEntity}
@@ -1218,14 +1512,20 @@
                         </div>
                     )}
 
-                    {/* Password Modal */}
-                    <PasswordModal
-                        isOpen={showAdminPasswordModal}
-                        onClose={() => setShowAdminPasswordModal(false)}
-                        onSubmit={handleAdminPasswordSubmit}
-                        title="Admin Authentication"
-                        message="Please enter the admin password to continue."
-                    />
+                    {/* Entity Detail Modal */}
+                    {selectedEntity && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4 overflow-y-auto">
+                            <div className="max-h-[90vh] overflow-y-auto w-full max-w-4xl">
+                                <EntityDetail 
+                                    entity={selectedEntity} 
+                                    onClose={handleCloseDetail}
+                                    onEdit={handleEditEntity}
+                                    onDelete={handleDeleteEntity}
+                                    isAdmin={isAdminAuthenticated}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
