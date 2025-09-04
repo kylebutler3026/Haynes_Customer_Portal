@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -25,6 +26,7 @@
         .icon-x { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 18L18 6M6 6l12 12'/%3E%3C/svg%3E") center/contain no-repeat; }
         .icon-logout { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1'/%3E%3C/svg%3E") center/contain no-repeat; }
         .icon-sync { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'/%3E%3C/svg%3E") center/contain no-repeat; }
+        .icon-edit { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'/%3E%3C/svg%3E") center/contain no-repeat; }
     </style>
 <script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
 </head>
@@ -45,16 +47,14 @@
         };
 
         // Separate AdminForm component that manages its own state
-        const AdminForm = React.memo(({ onSave, onCancel }) => {
+        const AdminForm = React.memo(({ onSave, onCancel, entityToEdit = null }) => {
             const [formData, setFormData] = useState({
                 name: '',
-                type: 'facility',
+                type: 'hospital',
                 address: '',
-                phone_numbers: [{ department: 'Main', number: '', type: 'primary' }],
+                phone_numbers: [{ label: 'Main', number: '' }],
                 contracted_service: '',
-                contractual_obligations: [
-                    { callType: 'Emergency', responseTime: '', requirements: '' }
-                ],
+                contractual_obligations: [],
                 er_entrance: '',
                 flight_program: {
                     isOneCall: false,
@@ -69,12 +69,49 @@
                     mutualAid: ''
                 },
                 county_info: {
-                    coverage: '',
-                    population: '',
-                    squareMiles: ''
+                    county: '',
+                    sheriff: '',
+                    fire: '',
+                    ems: ''
                 },
                 notes: ''
             });
+
+            // Initialize form with entity data if editing
+            useEffect(() => {
+                if (entityToEdit) {
+                    // Convert from display format to form format
+                    setFormData({
+                        name: entityToEdit.name || '',
+                        type: entityToEdit.type || 'hospital',
+                        address: entityToEdit.address || '',
+                        phone_numbers: entityToEdit.phoneNumbers || [{ label: 'Main', number: '' }],
+                        contracted_service: entityToEdit.contractedService || '',
+                        contractual_obligations: entityToEdit.contractualObligations || [],
+                        er_entrance: entityToEdit.erEntrance || '',
+                        flight_program: entityToEdit.flightProgram || {
+                            isOneCall: false,
+                            participating: false,
+                            flightByGround: false,
+                            notes: ''
+                        },
+                        backup_services: entityToEdit.backupServices || {
+                            airService: '',
+                            groundService: '',
+                            noUnitsContact: '',
+                            mutualAid: ''
+                        },
+                        county_info: entityToEdit.countyInfo || {
+                            county: '',
+                            sheriff: '',
+                            fire: '',
+                            ems: ''
+                        },
+                        notes: entityToEdit.notes || '',
+                        id: entityToEdit.id // Keep the ID for updating
+                    });
+                }
+            }, [entityToEdit]);
 
             const updateField = (field, value) => {
                 setFormData(prev => ({ ...prev, [field]: value }));
@@ -83,347 +120,690 @@
             const updateNestedField = (parent, field, value) => {
                 setFormData(prev => ({
                     ...prev,
-                    [parent]: { ...prev[parent], [field]: value }
+                    [parent]: {
+                        ...prev[parent],
+                        [field]: value
+                    }
                 }));
             };
 
-            const handlePhoneChange = (index, field, value) => {
-                const newPhones = [...formData.phone_numbers];
-                newPhones[index] = { ...newPhones[index], [field]: value };
-                setFormData(prev => ({ ...prev, phone_numbers: newPhones }));
-            };
-
-            const addPhone = () => {
+            const addPhoneNumber = () => {
                 setFormData(prev => ({
                     ...prev,
-                    phone_numbers: [...prev.phone_numbers, { department: '', number: '', type: 'department' }]
+                    phone_numbers: [...prev.phone_numbers, { label: '', number: '' }]
                 }));
             };
 
-            const removePhone = (index) => {
+            const updatePhoneNumber = (index, field, value) => {
+                setFormData(prev => {
+                    const updatedPhoneNumbers = [...prev.phone_numbers];
+                    updatedPhoneNumbers[index] = {
+                        ...updatedPhoneNumbers[index],
+                        [field]: value
+                    };
+                    return { ...prev, phone_numbers: updatedPhoneNumbers };
+                });
+            };
+
+            const removePhoneNumber = (index) => {
+                setFormData(prev => {
+                    const updatedPhoneNumbers = [...prev.phone_numbers];
+                    updatedPhoneNumbers.splice(index, 1);
+                    return { ...prev, phone_numbers: updatedPhoneNumbers };
+                });
+            };
+
+            const addContractualObligation = () => {
                 setFormData(prev => ({
                     ...prev,
-                    phone_numbers: prev.phone_numbers.filter((_, i) => i !== index)
+                    contractual_obligations: [...prev.contractual_obligations, '']
                 }));
             };
 
-            const handleObligationChange = (index, field, value) => {
-                const newObligations = [...formData.contractual_obligations];
-                newObligations[index] = { ...newObligations[index], [field]: value };
-                setFormData(prev => ({ ...prev, contractual_obligations: newObligations }));
+            const updateContractualObligation = (index, value) => {
+                setFormData(prev => {
+                    const updatedObligations = [...prev.contractual_obligations];
+                    updatedObligations[index] = value;
+                    return { ...prev, contractual_obligations: updatedObligations };
+                });
             };
 
-            const addObligation = () => {
-                setFormData(prev => ({
-                    ...prev,
-                    contractual_obligations: [...prev.contractual_obligations, { callType: '', responseTime: '', requirements: '' }]
-                }));
+            const removeContractualObligation = (index) => {
+                setFormData(prev => {
+                    const updatedObligations = [...prev.contractual_obligations];
+                    updatedObligations.splice(index, 1);
+                    return { ...prev, contractual_obligations: updatedObligations };
+                });
             };
 
-            const removeObligation = (index) => {
-                setFormData(prev => ({
-                    ...prev,
-                    contractual_obligations: prev.contractual_obligations.filter((_, i) => i !== index)
-                }));
-            };
-
-            const handleSubmit = () => {
+            const handleSubmit = (e) => {
+                e.preventDefault();
                 onSave(formData);
             };
 
             return (
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                            <input
-                                type="text"
-                                value={formData.name}
-                                onChange={(e) => updateField('name', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
+                <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl mx-auto">
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800">{entityToEdit ? 'Edit Entity' : 'Add New Entity'}</h2>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Basic Information */}
+                        <div className="bg-gray-50 p-4 rounded-md">
+                            <h3 className="font-medium text-gray-900 mb-3">Basic Information</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        value={formData.name}
+                                        onChange={(e) => updateField('name', e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                                    <select
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        value={formData.type}
+                                        onChange={(e) => updateField('type', e.target.value)}
+                                    >
+                                        <option value="hospital">Hospital</option>
+                                        <option value="clinic">Clinic</option>
+                                        <option value="fire_station">Fire Station</option>
+                                        <option value="police_station">Police Station</option>
+                                        <option value="ems_station">EMS Station</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="mt-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    value={formData.address}
+                                    onChange={(e) => updateField('address', e.target.value)}
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                            <select
-                                value={formData.type}
-                                onChange={(e) => updateField('type', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
+                        {/* Phone Numbers */}
+                        <div className="bg-gray-50 p-4 rounded-md">
+                            <h3 className="font-medium text-gray-900 mb-3">Phone Numbers</h3>
+                            {formData.phone_numbers.map((phone, index) => (
+                                <div key={index} className="flex items-center space-x-2 mb-2">
+                                    <input
+                                        type="text"
+                                        className="w-1/3 px-3 py-2 border border-gray-300 rounded-md"
+                                        value={phone.label}
+                                        onChange={(e) => updatePhoneNumber(index, 'label', e.target.value)}
+                                        placeholder="Label"
+                                    />
+                                    <input
+                                        type="text"
+                                        className="w-2/3 px-3 py-2 border border-gray-300 rounded-md"
+                                        value={phone.number}
+                                        onChange={(e) => updatePhoneNumber(index, 'number', e.target.value)}
+                                        placeholder="Number"
+                                    />
+                                    {index > 0 && (
+                                        <button
+                                            type="button"
+                                            className="p-2 bg-red-100 text-red-600 rounded-md"
+                                            onClick={() => removePhoneNumber(index)}
+                                        >
+                                            <Icon type="trash" />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            <button
+                                type="button"
+                                className="mt-2 flex items-center text-sm text-blue-600"
+                                onClick={addPhoneNumber}
                             >
-                                <option value="facility">Medical Facility</option>
-                                <option value="911center">911 Center</option>
-                            </select>
+                                <Icon type="plus" className="mr-1" /> Add Phone Number
+                            </button>
                         </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                        <textarea
-                            value={formData.address}
-                            onChange={(e) => updateField('address', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            rows="2"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Phone Numbers</label>
-                        {formData.phone_numbers.map((phone, index) => (
-                            <div key={`phone-${index}`} className="flex items-center space-x-2 mb-2">
+
+                        {/* Contracted Service */}
+                        <div className="bg-gray-50 p-4 rounded-md">
+                            <h3 className="font-medium text-gray-900 mb-3">Contracted Service</h3>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Service Provider</label>
                                 <input
                                     type="text"
-                                    placeholder="Department"
-                                    value={phone.department || ''}
-                                    onChange={(e) => handlePhoneChange(index, 'department', e.target.value)}
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    value={formData.contracted_service}
+                                    onChange={(e) => updateField('contracted_service', e.target.value)}
+                                    placeholder="Service provider name"
                                 />
-                                <input
-                                    type="text"
-                                    placeholder="Phone Number"
-                                    value={phone.number || ''}
-                                    onChange={(e) => handlePhoneChange(index, 'number', e.target.value)}
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
-                                />
-                                <select
-                                    value={phone.type || 'department'}
-                                    onChange={(e) => handlePhoneChange(index, 'type', e.target.value)}
-                                    className="px-3 py-2 border border-gray-300 rounded-md"
-                                >
-                                    <option value="primary">Primary</option>
-                                    <option value="emergency">Emergency</option>
-                                    <option value="department">Department</option>
-                                    <option value="admin">Admin</option>
-                                </select>
+                            </div>
+
+                            <div className="mt-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Contractual Obligations</label>
+                                {formData.contractual_obligations.map((obligation, index) => (
+                                    <div key={index} className="flex items-center space-x-2 mb-2">
+                                        <input
+                                            type="text"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                            value={obligation}
+                                            onChange={(e) => updateContractualObligation(index, e.target.value)}
+                                            placeholder="Obligation details"
+                                        />
+                                        <button
+                                            type="button"
+                                            className="p-2 bg-red-100 text-red-600 rounded-md"
+                                            onClick={() => removeContractualObligation(index)}
+                                        >
+                                            <Icon type="trash" />
+                                        </button>
+                                    </div>
+                                ))}
                                 <button
                                     type="button"
-                                    onClick={() => removePhone(index)}
-                                    className="p-2 text-red-600 hover:bg-red-50 rounded-md"
-                                    disabled={formData.phone_numbers.length === 1}
+                                    className="mt-2 flex items-center text-sm text-blue-600"
+                                    onClick={addContractualObligation}
                                 >
-                                    <Icon type='trash' className="h-4 w-4" />
+                                    <Icon type="plus" className="mr-1" /> Add Obligation
                                 </button>
                             </div>
-                        ))}
-                        <button
-                            type="button"
-                            onClick={addPhone}
-                            className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm"
-                        >
-                            <Icon type='plus' className="h-4 w-4" />
-                            <span>Add Phone Number</span>
-                        </button>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Contractual Obligations & Response Times</label>
-                        {formData.contractual_obligations.map((obligation, index) => (
-                            <div key={`obligation-${index}`} className="flex items-center space-x-2 mb-2 p-3 border border-gray-200 rounded-md">
-                                <input
-                                    type="text"
-                                    placeholder="Call Type (e.g., Emergency, Non-Emergency)"
-                                    value={obligation.callType || ''}
-                                    onChange={(e) => handleObligationChange(index, 'callType', e.target.value)}
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Response Time (e.g., 8 minutes)"
-                                    value={obligation.responseTime || ''}
-                                    onChange={(e) => handleObligationChange(index, 'responseTime', e.target.value)}
-                                    className="w-32 px-3 py-2 border border-gray-300 rounded-md"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Requirements"
-                                    value={obligation.requirements || ''}
-                                    onChange={(e) => handleObligationChange(index, 'requirements', e.target.value)}
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => removeObligation(index)}
-                                    className="p-2 text-red-600 hover:bg-red-50 rounded-md"
-                                    disabled={formData.contractual_obligations.length === 1}
-                                >
-                                    <Icon type='trash' className="h-4 w-4" />
-                                </button>
-                            </div>
-                        ))}
-                        <button
-                            type="button"
-                            onClick={addObligation}
-                            className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-sm"
-                        >
-                            <Icon type='plus' className="h-4 w-4" />
-                            <span>Add Contractual Obligation</span>
-                        </button>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Contracted Service</label>
-                        <input
-                            type="text"
-                            value={formData.contracted_service}
-                            onChange={(e) => updateField('contracted_service', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                    </div>
-                    {formData.type === 'facility' && (
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">ER Entrance Information</label>
-                            <textarea
-                                value={formData.er_entrance}
-                                onChange={(e) => updateField('er_entrance', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                rows="3"
-                                placeholder="Describe ER entrance location and access details..."
-                            />
                         </div>
-                    )}
-                    <div className="border border-gray-200 rounded-md p-4">
-                        <h4 className="font-medium text-gray-900 mb-3">Flight Program</h4>
-                        <div className="space-y-3">
-                            <div className="flex items-center space-x-4">
-                                <label className="flex items-center">
+
+                        {/* ER Entrance */}
+                        {formData.type === 'hospital' && (
+                            <div className="bg-gray-50 p-4 rounded-md">
+                                <h3 className="font-medium text-gray-900 mb-3">ER Entrance</h3>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Entrance Details</label>
+                                    <textarea
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        value={formData.er_entrance}
+                                        onChange={(e) => updateField('er_entrance', e.target.value)}
+                                        placeholder="Describe the ER entrance location and access details"
+                                        rows="3"
+                                    ></textarea>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Flight Program */}
+                        <div className="bg-gray-50 p-4 rounded-md">
+                            <h3 className="font-medium text-gray-900 mb-3">Flight Program</h3>
+                            <div className="space-y-2">
+                                <div className="flex items-center">
                                     <input
                                         type="checkbox"
+                                        id="isOneCall"
+                                        className="mr-2"
                                         checked={formData.flight_program.isOneCall}
                                         onChange={(e) => updateNestedField('flight_program', 'isOneCall', e.target.checked)}
-                                        className="mr-2"
                                     />
-                                    One Call Facility/Center
-                                </label>
-                                <label className="flex items-center">
+                                    <label htmlFor="isOneCall" className="text-sm text-gray-700">Is One Call</label>
+                                </div>
+                                <div className="flex items-center">
                                     <input
                                         type="checkbox"
+                                        id="participating"
+                                        className="mr-2"
                                         checked={formData.flight_program.participating}
                                         onChange={(e) => updateNestedField('flight_program', 'participating', e.target.checked)}
+                                    />
+                                    <label htmlFor="participating" className="text-sm text-gray-700">Participating</label>
+                                </div>
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="flightByGround"
                                         className="mr-2"
+                                        checked={formData.flight_program.flightByGround}
+                                        onChange={(e) => updateNestedField('flight_program', 'flightByGround', e.target.checked)}
                                     />
-                                    Flight Program Participant
-                                </label>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Flight Program Notes</label>
-                                <textarea
-                                    value={formData.flight_program.notes}
-                                    onChange={(e) => updateNestedField('flight_program', 'notes', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                    rows="2"
-                                    placeholder="Additional flight program details, helicopter landing zones, special protocols, etc."
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="border border-gray-200 rounded-md p-4">
-                        <h4 className="font-medium text-gray-900 mb-3">Backup Services</h4>
-                        <div className="space-y-3">
-                            {formData.type === 'facility' ? (
-                                <>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Air Service Backup</label>
-                                        <input
-                                            type="text"
-                                            value={formData.backup_services.airService}
-                                            onChange={(e) => updateNestedField('backup_services', 'airService', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            placeholder="Backup air service contact and distance"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Ground Service Backup</label>
-                                        <input
-                                            type="text"
-                                            value={formData.backup_services.groundService}
-                                            onChange={(e) => updateNestedField('backup_services', 'groundService', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            placeholder="Backup ground service contact and distance"
-                                        />
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">No Units Available Contact</label>
-                                        <input
-                                            type="text"
-                                            value={formData.backup_services.noUnitsContact}
-                                            onChange={(e) => updateNestedField('backup_services', 'noUnitsContact', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            placeholder="Contact when no units available"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Mutual Aid Contact</label>
-                                        <input
-                                            type="text"
-                                            value={formData.backup_services.mutualAid}
-                                            onChange={(e) => updateNestedField('backup_services', 'mutualAid', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            placeholder="Mutual aid coordination contact"
-                                        />
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                    {formData.type === '911center' && (
-                        <div className="border border-gray-200 rounded-md p-4">
-                            <h4 className="font-medium text-gray-900 mb-3">Coverage Information</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Coverage Area</label>
-                                    <input
-                                        type="text"
-                                        value={formData.county_info.coverage}
-                                        onChange={(e) => updateNestedField('county_info', 'coverage', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                    />
+                                    <label htmlFor="flightByGround" className="text-sm text-gray-700">Flight By Ground</label>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Population</label>
-                                    <input
-                                        type="text"
-                                        value={formData.county_info.population}
-                                        onChange={(e) => updateNestedField('county_info', 'population', e.target.value)}
+                                <div className="mt-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                    <textarea
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Square Miles</label>
-                                    <input
-                                        type="text"
-                                        value={formData.county_info.squareMiles}
-                                        onChange={(e) => updateNestedField('county_info', 'squareMiles', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                    />
+                                        value={formData.flight_program.notes}
+                                        onChange={(e) => updateNestedField('flight_program', 'notes', e.target.value)}
+                                        placeholder="Additional flight program notes"
+                                        rows="2"
+                                    ></textarea>
                                 </div>
                             </div>
                         </div>
-                    )}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                        <textarea
-                            value={formData.notes}
-                            onChange={(e) => updateField('notes', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            rows="3"
-                            placeholder="Operational notes and important information..."
-                        />
-                    </div>
-                    <div className="flex justify-end space-x-2 pt-4 border-t">
-                        <button
-                            onClick={onCancel}
-                            className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleSubmit}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                        >
-                            Save to PostgreSQL
-                        </button>
-                    </div>
+
+                        {/* Backup Services */}
+                        <div className="bg-gray-50 p-4 rounded-md">
+                            <h4 className="font-medium text-gray-900 mb-3">Backup Services</h4>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Air Service Backup</label>
+                                    <textarea
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        value={formData.backup_services.airService}
+                                        onChange={(e) => updateNestedField('backup_services', 'airService', e.target.value)}
+                                        placeholder="Backup air service contact and distance"
+                                        rows="2"
+                                    ></textarea>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ground Service Backup</label>
+                                    <textarea
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        value={formData.backup_services.groundService}
+                                        onChange={(e) => updateNestedField('backup_services', 'groundService', e.target.value)}
+                                        placeholder="Backup ground service contact and distance"
+                                        rows="2"
+                                    ></textarea>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">No Units Contact</label>
+                                    <textarea
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        value={formData.backup_services.noUnitsContact}
+                                        onChange={(e) => updateNestedField('backup_services', 'noUnitsContact', e.target.value)}
+                                        placeholder="Contact when no units are available"
+                                        rows="2"
+                                    ></textarea>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Mutual Aid</label>
+                                    <textarea
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        value={formData.backup_services.mutualAid}
+                                        onChange={(e) => updateNestedField('backup_services', 'mutualAid', e.target.value)}
+                                        placeholder="Mutual aid agreements"
+                                        rows="2"
+                                    ></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* County Information */}
+                        <div className="bg-gray-50 p-4 rounded-md">
+                            <h3 className="font-medium text-gray-900 mb-3">County Information</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">County</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        value={formData.county_info.county}
+                                        onChange={(e) => updateNestedField('county_info', 'county', e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Sheriff</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        value={formData.county_info.sheriff}
+                                        onChange={(e) => updateNestedField('county_info', 'sheriff', e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Fire</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        value={formData.county_info.fire}
+                                        onChange={(e) => updateNestedField('county_info', 'fire', e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">EMS</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        value={formData.county_info.ems}
+                                        onChange={(e) => updateNestedField('county_info', 'ems', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Notes */}
+                        <div className="bg-gray-50 p-4 rounded-md">
+                            <h3 className="font-medium text-gray-900 mb-3">Additional Notes</h3>
+                            <textarea
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                value={formData.notes}
+                                onChange={(e) => updateField('notes', e.target.value)}
+                                placeholder="Any additional information"
+                                rows="4"
+                            ></textarea>
+                        </div>
+
+                        {/* Form Actions */}
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                type="button"
+                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
+                                onClick={onCancel}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md"
+                            >
+                                {entityToEdit ? 'Update Entity' : 'Save Entity'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             );
         });
+
+        // Entity Detail View
+        const EntityDetail = ({ entity, onClose, onEdit, onDelete, isAdmin }) => {
+            if (!entity) return null;
+
+            return (
+                <div className="bg-white rounded-lg shadow-lg p-6 max-w-4xl mx-auto">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-2xl font-bold text-gray-800">{entity.name}</h2>
+                        <div className="flex space-x-2">
+                            {isAdmin && (
+                                <>
+                                    <button 
+                                        className="p-2 bg-blue-100 text-blue-600 rounded-md flex items-center"
+                                        onClick={() => onEdit(entity)}
+                                    >
+                                        <Icon type="edit" className="mr-1" /> Edit
+                                    </button>
+                                    <button 
+                                        className="p-2 bg-red-100 text-red-600 rounded-md flex items-center"
+                                        onClick={() => onDelete(entity.id)}
+                                    >
+                                        <Icon type="trash" className="mr-1" /> Delete
+                                    </button>
+                                </>
+                            )}
+                            <button 
+                                className="p-2 bg-gray-100 text-gray-600 rounded-md"
+                                onClick={onClose}
+                            >
+                                <Icon type="x" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Basic Information */}
+                        <div className="bg-gray-50 p-4 rounded-md">
+                            <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                                <Icon type={entity.type === 'hospital' ? 'building' : entity.type === 'fire_station' ? 'alert' : 'users'} className="mr-2" />
+                                Basic Information
+                            </h3>
+                            <div className="space-y-2">
+                                <div className="flex items-start">
+                                    <div className="w-8 flex-shrink-0 flex justify-center">
+                                        <Icon type="building" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500">Type</p>
+                                        <p className="text-gray-900 capitalize">{entity.type.replace('_', ' ')}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start">
+                                    <div className="w-8 flex-shrink-0 flex justify-center">
+                                        <Icon type="map" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500">Address</p>
+                                        <p className="text-gray-900">{entity.address || 'Not specified'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start">
+                                    <div className="w-8 flex-shrink-0 flex justify-center">
+                                        <Icon type="calendar" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500">Last Contact</p>
+                                        <p className="text-gray-900">{entity.lastContact || 'Not recorded'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Phone Numbers */}
+                        <div className="bg-gray-50 p-4 rounded-md">
+                            <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                                <Icon type="phone" className="mr-2" />
+                                Contact Information
+                            </h3>
+                            <div className="space-y-2">
+                                {entity.phoneNumbers && entity.phoneNumbers.length > 0 ? (
+                                    entity.phoneNumbers.map((phone, index) => (
+                                        <div key={index} className="flex items-start">
+                                            <div className="w-8 flex-shrink-0 flex justify-center">
+                                                <Icon type="phone" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-gray-500">{phone.label}</p>
+                                                <p className="text-blue-600 font-mono">{phone.number}</p>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-gray-500 italic">No phone numbers listed</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Contracted Service */}
+                        {entity.contractedService && (
+                            <div className="bg-gray-50 p-4 rounded-md">
+                                <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                                    <Icon type="truck" className="mr-2" />
+                                    Contracted Service
+                                </h3>
+                                <p className="text-gray-900 font-medium">{entity.contractedService}</p>
+                                
+                                {entity.contractualObligations && entity.contractualObligations.length > 0 && (
+                                    <div className="mt-3">
+                                        <h4 className="text-sm font-medium text-gray-700 mb-1">Contractual Obligations</h4>
+                                        <ul className="list-disc pl-5 space-y-1">
+                                            {entity.contractualObligations.map((obligation, index) => (
+                                                <li key={index} className="text-gray-700">{obligation}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ER Entrance */}
+                        {entity.type === 'hospital' && entity.erEntrance && (
+                            <div className="bg-gray-50 p-4 rounded-md">
+                                <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                                    <Icon type="alert" className="mr-2" />
+                                    ER Entrance
+                                </h3>
+                                <p className="text-gray-700 bg-yellow-50 p-3 rounded-md">{entity.erEntrance}</p>
+                            </div>
+                        )}
+
+                        {/* Flight Program */}
+                        <div className="bg-gray-50 p-4 rounded-md">
+                            <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                                <Icon type="plane" className="mr-2" />
+                                Flight Program
+                            </h3>
+                            <div className="space-y-2">
+                                <div className="flex items-center">
+                                    <div className="w-8 flex-shrink-0">
+                                        {entity.flightProgram?.isOneCall ? (
+                                            <div className="h-4 w-4 bg-green-500 rounded-full"></div>
+                                        ) : (
+                                            <div className="h-4 w-4 bg-gray-300 rounded-full"></div>
+                                        )}
+                                    </div>
+                                    <p className="text-gray-700">One Call</p>
+                                </div>
+                                <div className="flex items-center">
+                                    <div className="w-8 flex-shrink-0">
+                                        {entity.flightProgram?.participating ? (
+                                            <div className="h-4 w-4 bg-green-500 rounded-full"></div>
+                                        ) : (
+                                            <div className="h-4 w-4 bg-gray-300 rounded-full"></div>
+                                        )}
+                                    </div>
+                                    <p className="text-gray-700">Participating</p>
+                                </div>
+                                <div className="flex items-center">
+                                    <div className="w-8 flex-shrink-0">
+                                        {entity.flightProgram?.flightByGround ? (
+                                            <div className="h-4 w-4 bg-green-500 rounded-full"></div>
+                                        ) : (
+                                            <div className="h-4 w-4 bg-gray-300 rounded-full"></div>
+                                        )}
+                                    </div>
+                                    <p className="text-gray-700">Flight By Ground</p>
+                                </div>
+                                {entity.flightProgram?.notes && (
+                                    <div className="mt-2">
+                                        <p className="text-sm text-gray-500">Notes</p>
+                                        <p className="text-gray-700 bg-blue-50 p-2 rounded-md">{entity.flightProgram.notes}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Backup Services */}
+                        <div className="bg-gray-50 p-4 rounded-md">
+                            <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                                <Icon type="alert" className="mr-2" />
+                                Backup Services
+                            </h3>
+                            <div className="space-y-3">
+                                {/* Display the simplified backup services */}
+                                {entity.backupServices.airService && (
+                                    <div>
+                                        <h4 className="text-sm font-medium text-gray-700 mb-1">Air Service Backup</h4>
+                                        <p className="text-gray-700 bg-orange-50 p-3 rounded-md font-medium">{entity.backupServices.airService}</p>
+                                    </div>
+                                )}
+                                
+                                {entity.backupServices.groundService && (
+                                    <div>
+                                        <h4 className="text-sm font-medium text-gray-700 mb-1">Ground Service Backup</h4>
+                                        <p className="text-gray-700 bg-blue-50 p-3 rounded-md font-medium">{entity.backupServices.groundService}</p>
+                                    </div>
+                                )}
+                                
+                                {entity.backupServices.noUnitsContact && (
+                                    <div>
+                                        <h4 className="text-sm font-medium text-gray-700 mb-1">No Units Contact</h4>
+                                        <p className="text-gray-700 bg-red-50 p-3 rounded-md font-medium">{entity.backupServices.noUnitsContact}</p>
+                                    </div>
+                                )}
+                                
+                                {entity.backupServices.mutualAid && (
+                                    <div>
+                                        <h4 className="text-sm font-medium text-gray-700 mb-1">Mutual Aid</h4>
+                                        <p className="text-gray-700 bg-yellow-50 p-3 rounded-md font-medium">{entity.backupServices.mutualAid}</p>
+                                    </div>
+                                )}
+                                
+                                {!entity.backupServices.airService && 
+                                 !entity.backupServices.groundService && 
+                                 !entity.backupServices.noUnitsContact && 
+                                 !entity.backupServices.mutualAid && (
+                                    <p className="text-gray-500 italic">No backup services specified</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* County Information */}
+                        <div className="bg-gray-50 p-4 rounded-md">
+                            <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                                <Icon type="map" className="mr-2" />
+                                County Information
+                            </h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <p className="text-sm text-gray-500">County</p>
+                                    <p className="text-gray-900">{entity.countyInfo?.county || 'Not specified'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-500">Sheriff</p>
+                                    <p className="text-gray-900">{entity.countyInfo?.sheriff || 'Not specified'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-500">Fire</p>
+                                    <p className="text-gray-900">{entity.countyInfo?.fire || 'Not specified'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-500">EMS</p>
+                                    <p className="text-gray-900">{entity.countyInfo?.ems || 'Not specified'}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Notes */}
+                        {entity.notes && (
+                            <div className="bg-gray-50 p-4 rounded-md md:col-span-2">
+                                <h3 className="font-medium text-gray-900 mb-3">Additional Notes</h3>
+                                <p className="text-gray-700 whitespace-pre-wrap">{entity.notes}</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // Password Modal
+        const PasswordModal = ({ isOpen, onClose, onSubmit, title, message }) => {
+            const [password, setPassword] = useState('');
+            
+            if (!isOpen) return null;
+            
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onSubmit(password);
+                setPassword('');
+            };
+            
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-medium text-gray-900 flex items-center">
+                                <Icon type="lock" className="mr-2" />
+                                {title}
+                            </h3>
+                            <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+                                <Icon type="x" />
+                            </button>
+                        </div>
+                        <p className="mb-4 text-gray-600">{message}</p>
+                        <form onSubmit={handleSubmit}>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                <input
+                                    type="password"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div className="flex justify-end">
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md"
+                                >
+                                    Submit
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
 
         const EmergencyPortal = () => {
             const [searchTerm, setSearchTerm] = useState('');
@@ -438,6 +818,7 @@
             const [entities, setEntities] = useState([]);
             const [loading, setLoading] = useState(true);
             const [lastSync, setLastSync] = useState(null);
+            const [entityToEdit, setEntityToEdit] = useState(null);
 
             // Load entities from Supabase
             const loadEntities = useCallback(async () => {
@@ -482,15 +863,15 @@
             useEffect(() => {
                 loadEntities();
 
-                // Subscribe to real-time changes
+                // Subscribe to changes
                 const subscription = supabase
                     .channel('emergency_entities_changes')
-                    .on('postgres_changes', {
-                        event: '*',
-                        schema: 'public',
-                        table: 'emergency_entities'
-                    }, (payload) => {
-                        console.log('Real-time update:', payload);
+                    .on('postgres_changes', { 
+                        event: '*', 
+                        schema: 'public', 
+                        table: 'emergency_entities' 
+                    }, payload => {
+                        console.log('Change received!', payload);
                         loadEntities();
                     })
                     .subscribe();
@@ -500,46 +881,72 @@
                 };
             }, [loadEntities]);
 
-            const filteredEntities = entities.filter(entity =>
-                entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                entity.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                entity.phoneNumbers.some(phone => phone.number.includes(searchTerm)) ||
-                entity.type.toLowerCase().includes(searchTerm.toLowerCase())
-            );
+            const handleSearch = (e) => {
+                setSearchTerm(e.target.value);
+            };
 
-            const handlePortalPasswordSubmit = () => {
-                if (portalPasswordInput === 'dispatch2024') {
-                    setIsPortalAuthenticated(true);
-                    setPortalPasswordInput('');
+            const handleEntityClick = (entity) => {
+                setSelectedEntity(entity);
+            };
+
+            const handleCloseDetail = () => {
+                setSelectedEntity(null);
+            };
+
+            const handleAdminClick = () => {
+                if (isAdminAuthenticated) {
+                    setShowAdmin(true);
                 } else {
-                    alert('Incorrect password');
-                    setPortalPasswordInput('');
+                    setAdminAction('admin');
+                    setShowAdminPasswordModal(true);
                 }
             };
 
-            const handleAdminPasswordSubmit = () => {
-                if (adminPasswordInput === '0911') {
+            const handleAdminPasswordSubmit = (password) => {
+                // In a real app, this would be a secure authentication process
+                if (password === 'admin123') {
                     setIsAdminAuthenticated(true);
                     setShowAdminPasswordModal(false);
-                    setAdminPasswordInput('');
-                    if (adminAction === 'add') {
+                    
+                    if (adminAction === 'admin') {
                         setShowAdmin(true);
+                    } else if (adminAction === 'export') {
+                        handleExportData();
                     }
                 } else {
                     alert('Incorrect password');
-                    setAdminPasswordInput('');
                 }
             };
 
-            const handleAdminClick = (action) => {
-                setAdminAction(action);
-                if (!isAdminAuthenticated) {
-                    setShowAdminPasswordModal(true);
+            const handlePortalPasswordSubmit = (password) => {
+                // In a real app, this would be a secure authentication process
+                if (password === 'portal123') {
+                    setIsPortalAuthenticated(true);
+                    setShowAdminPasswordModal(false);
                 } else {
-                    if (action === 'add') {
-                        setShowAdmin(true);
-                    }
+                    alert('Incorrect password');
                 }
+            };
+
+            const handleExportClick = () => {
+                if (isAdminAuthenticated) {
+                    handleExportData();
+                } else {
+                    setAdminAction('export');
+                    setShowAdminPasswordModal(true);
+                }
+            };
+
+            const handleExportData = () => {
+                const dataStr = JSON.stringify(entities, null, 2);
+                const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`;
+                
+                const link = document.createElement('a');
+                link.href = dataUri;
+                link.download = `emergency-entities-backup-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             };
 
             const handleSaveNewEntity = async (formData) => {
@@ -560,15 +967,34 @@
                         last_contact: today
                     };
 
-                    const { data, error } = await supabase
-                        .from('emergency_entities')
-                        .insert([entityToSave])
-                        .select();
+                    // If we have an ID, it's an update operation
+                    if (formData.id) {
+                        const { data, error } = await supabase
+                            .from('emergency_entities')
+                            .update(entityToSave)
+                            .eq('id', formData.id)
+                            .select();
 
-                    if (error) {
-                        console.error('Error saving entity:', error);
-                        alert('Error saving entity. Please try again.');
-                        return;
+                        if (error) {
+                            console.error('Error updating entity:', error);
+                            alert('Error updating entity. Please try again.');
+                            return;
+                        }
+                        
+                        // Clear the edit state
+                        setEntityToEdit(null);
+                    } else {
+                        // Otherwise it's an insert operation
+                        const { data, error } = await supabase
+                            .from('emergency_entities')
+                            .insert([entityToSave])
+                            .select();
+
+                        if (error) {
+                            console.error('Error saving entity:', error);
+                            alert('Error saving entity. Please try again.');
+                            return;
+                        }
                     }
 
                     setShowAdmin(false);
@@ -592,9 +1018,7 @@
                             return;
                         }
 
-                        if (selectedEntity?.id === entityId) {
-                            setSelectedEntity(null);
-                        }
+                        setSelectedEntity(null);
                     } catch (err) {
                         console.error('Error deleting entity:', err);
                         alert('Error deleting entity. Please try again.');
@@ -602,589 +1026,206 @@
                 }
             };
 
-            const exportData = async () => {
-                try {
-                    const { data, error } = await supabase
-                        .from('emergency_entities')
-                        .select('*');
-
-                    if (error) {
-                        console.error('Error exporting data:', error);
-                        alert('Error exporting data. Please try again.');
-                        return;
-                    }
-
-                    const dataStr = JSON.stringify(data, null, 2);
-                    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-                    const url = URL.createObjectURL(dataBlob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `emergency-entities-backup-${new Date().toISOString().split('T')[0]}.json`;
-                    link.click();
-                } catch (err) {
-                    console.error('Error exporting data:', err);
-                    alert('Error exporting data. Please try again.');
-                }
+            const handleEditEntity = (entity) => {
+                setEntityToEdit(entity);
+                setShowAdmin(true);
             };
 
-            const getTypeIcon = (type) => {
-                return type === 'facility' ? 
-                    <Icon type='building' className="h-4 w-4" /> : 
-                    <Icon type='users' className="h-4 w-4" />;
-            };
-
-            const getTypeColor = (type) => {
-                return type === 'facility' 
-                    ? 'bg-blue-100 text-blue-800' 
-                    : 'bg-red-100 text-red-800';
-            };
-
-            const getPhoneTypeColor = (type) => {
-                switch (type) {
-                    case 'emergency': return 'bg-red-100 text-red-800';
-                    case 'primary': return 'bg-blue-100 text-blue-800';
-                    case 'department': return 'bg-gray-100 text-gray-800';
-                    case 'admin': return 'bg-purple-100 text-purple-800';
-                    default: return 'bg-gray-100 text-gray-800';
-                }
-            };
-
-            // Portal Login Screen
-            const PortalLogin = () => (
-                <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 flex items-center justify-center">
-                    <div className="bg-white rounded-lg shadow-2xl p-8 w-96">
-                        <div className="text-center mb-6">
-                            <div className="flex items-center justify-center mb-4">
-                                <div className="bg-blue-100 p-3 rounded-full">
-                                    <Icon type='lock' className="h-8 w-8 text-blue-600" />
-                                </div>
-                            </div>
-                            <h1 className="text-2xl font-bold text-gray-900 mb-2">Emergency Services Portal</h1>
-                            <p className="text-gray-600 mb-2">Communications Center Access</p>
-                            <p className="text-xs text-green-600">✅ Real-time PostgreSQL Database</p>
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Dispatcher Password</label>
-                                <input
-                                    type="password"
-                                    value={portalPasswordInput}
-                                    onChange={(e) => setPortalPasswordInput(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handlePortalPasswordSubmit()}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
-                                    placeholder="Enter password"
-                                    autoFocus={true}
-                                />
-                            </div>
-                            <button
-                                onClick={handlePortalPasswordSubmit}
-                                className="w-full py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium text-lg"
-                            >
-                                Access Portal
-                            </button>
-                            <div className="text-center text-xs text-gray-500 mt-4">
-                                Authorized Personnel Only
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            const filteredEntities = entities.filter(entity =>
+                entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                entity.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                entity.type.toLowerCase().includes(searchTerm.toLowerCase())
             );
 
-            // Admin Password Modal
-            const AdminPasswordModal = () => (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 w-96">
-                        <div className="flex items-center mb-4">
-                            <Icon type='lock' className="h-5 w-5 text-gray-400 mr-2" />
-                            <h3 className="text-lg font-semibold">Admin Authentication Required</h3>
-                        </div>
-                        <p className="text-gray-600 mb-4">Please enter the admin password to continue:</p>
-                        <input
-                            type="password"
-                            value={adminPasswordInput}
-                            onChange={(e) => setAdminPasswordInput(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleAdminPasswordSubmit()}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Enter admin password"
-                            autoFocus={true}
-                        />
-                        <div className="flex justify-end space-x-2">
-                            <button
-                                onClick={() => {
-                                    setShowAdminPasswordModal(false);
-                                    setAdminPasswordInput('');
-                                }}
-                                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleAdminPasswordSubmit}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                            >
-                                Submit
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            );
-
+            // If not authenticated to the portal, show login screen
             if (!isPortalAuthenticated) {
-                return <PortalLogin />;
-            }
-
-            if (loading) {
                 return (
-                    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                        <div className="text-center">
-                            <Icon type='sync' className="h-8 w-8 text-blue-600 mx-auto mb-4 animate-spin" />
-                            <p className="text-gray-600">Loading from PostgreSQL database...</p>
+                    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+                            <div className="text-center mb-6">
+                                <h1 className="text-2xl font-bold text-gray-900">Emergency Services Portal</h1>
+                                <p className="text-gray-600 mt-2">Please enter the password to access the portal</p>
+                            </div>
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                handlePortalPasswordSubmit(portalPasswordInput);
+                            }}>
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <Icon type="lock" />
+                                        </div>
+                                        <input
+                                            type="password"
+                                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+                                            value={portalPasswordInput}
+                                            onChange={(e) => setPortalPasswordInput(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-md"
+                                >
+                                    Access Portal
+                                </button>
+                            </form>
                         </div>
                     </div>
                 );
             }
 
             return (
-                <div className="min-h-screen bg-gray-50">
-                    {showAdminPasswordModal && <AdminPasswordModal />}
-
-                    {/* Admin Modal with separate form component */}
-                    {showAdmin && isAdminAuthenticated && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                            <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                                <div className="p-6 border-b">
-                                    <div className="flex justify-between items-center">
-                                        <h3 className="text-xl font-semibold">Add New Entity</h3>
-                                        <button
-                                            onClick={() => setShowAdmin(false)}
-                                            className="p-2 hover:bg-gray-100 rounded-md"
-                                        >
-                                            <Icon type='x' className="h-5 w-5" />
-                                        </button>
+                <div className="min-h-screen bg-gray-100">
+                    {/* Header */}
+                    <header className="bg-white shadow">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+                            <h1 className="text-2xl font-bold text-gray-900">Emergency Services Portal</h1>
+                            <div className="flex items-center space-x-4">
+                                {lastSync && (
+                                    <div className="text-sm text-gray-500 flex items-center">
+                                        <Icon type="sync" className="mr-1" />
+                                        Last sync: {lastSync}
                                     </div>
+                                )}
+                                <button
+                                    className="p-2 bg-blue-100 text-blue-600 rounded-md flex items-center"
+                                    onClick={handleAdminClick}
+                                >
+                                    <Icon type="plus" className="mr-1" />
+                                    Add Entity
+                                </button>
+                                <button
+                                    className="p-2 bg-gray-100 text-gray-600 rounded-md flex items-center"
+                                    onClick={handleExportClick}
+                                >
+                                    <Icon type="sync" className="mr-1" />
+                                    Export Data
+                                </button>
+                                <button
+                                    className="p-2 bg-red-100 text-red-600 rounded-md flex items-center"
+                                    onClick={() => setIsPortalAuthenticated(false)}
+                                >
+                                    <Icon type="logout" className="mr-1" />
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                        {/* Search Bar */}
+                        <div className="mb-6">
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Icon type="search" />
                                 </div>
-                                <div className="p-6">
-                                    <AdminForm 
-                                        onSave={handleSaveNewEntity}
-                                        onCancel={() => setShowAdmin(false)}
-                                    />
-                                </div>
+                                <input
+                                    type="text"
+                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+                                    placeholder="Search by name, address, or type..."
+                                    value={searchTerm}
+                                    onChange={handleSearch}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Entity List */}
+                        {loading ? (
+                            <div className="text-center py-10">
+                                <p className="text-gray-500">Loading entities...</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {filteredEntities.length > 0 ? (
+                                    filteredEntities.map(entity => (
+                                        <div
+                                            key={entity.id}
+                                            className="bg-white p-4 rounded-lg shadow cursor-pointer hover:shadow-md transition-shadow"
+                                            onClick={() => handleEntityClick(entity)}
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <h3 className="text-lg font-medium text-gray-900">{entity.name}</h3>
+                                                <div className={`px-2 py-1 rounded text-xs font-medium ${
+                                                    entity.type === 'hospital' ? 'bg-blue-100 text-blue-800' :
+                                                    entity.type === 'clinic' ? 'bg-green-100 text-green-800' :
+                                                    entity.type === 'fire_station' ? 'bg-red-100 text-red-800' :
+                                                    entity.type === 'police_station' ? 'bg-indigo-100 text-indigo-800' :
+                                                    entity.type === 'ems_station' ? 'bg-yellow-100 text-yellow-800' :
+                                                    'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                    {entity.type.replace('_', ' ')}
+                                                </div>
+                                            </div>
+                                            <p className="text-gray-500 text-sm mt-1">{entity.address}</p>
+                                            
+                                            <div className="mt-3 flex items-center text-sm text-gray-500">
+                                                <Icon type="phone" className="mr-1" />
+                                                <span>{entity.phoneNumbers && entity.phoneNumbers.length > 0 ? 
+                                                    `${entity.phoneNumbers.length} contact${entity.phoneNumbers.length > 1 ? 's' : ''}` : 
+                                                    'No contacts'}
+                                                </span>
+                                            </div>
+                                            
+                                            {entity.lastContact && (
+                                                <div className="mt-1 flex items-center text-sm text-gray-500">
+                                                    <Icon type="calendar" className="mr-1" />
+                                                    <span>Last contact: {entity.lastContact}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="col-span-3 text-center py-10">
+                                        <p className="text-gray-500">No entities found matching your search.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Entity Detail Modal */}
+                    {selectedEntity && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
+                            <div className="max-h-[90vh] overflow-y-auto w-full max-w-4xl">
+                                <EntityDetail 
+                                    entity={selectedEntity} 
+                                    onClose={handleCloseDetail}
+                                    onEdit={handleEditEntity}
+                                    onDelete={handleDeleteEntity}
+                                    isAdmin={isAdminAuthenticated}
+                                />
                             </div>
                         </div>
                     )}
 
-                    <div className="bg-white shadow-sm border-b">
-                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                            <div className="flex justify-between items-center py-4">
-                                <div>
-                                    <h1 className="text-2xl font-bold text-gray-900">Emergency Services Portal</h1>
-                                    {lastSync && <p className="text-xs text-green-600">✅ PostgreSQL - Last sync: {lastSync}</p>}
-                                </div>
-                                <div className="flex items-center space-x-4">
-                                    <button
-                                        onClick={() => handleAdminClick('add')}
-                                        className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                                    >
-                                        <Icon type='plus' className="h-4 w-4" />
-                                        <span>Add Entity</span>
-                                    </button>
-                                    {isAdminAuthenticated && (
-                                        <button
-                                            onClick={exportData}
-                                            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                                        >
-                                            Export Data
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={() => setIsPortalAuthenticated(false)}
-                                        className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-                                    >
-                                        <Icon type='logout' className="h-4 w-4" />
-                                        <span>Logout</span>
-                                    </button>
-                                    <div className="text-sm text-gray-500">Communications Center</div>
-                                </div>
+                    {/* Admin Form Modal */}
+                    {showAdmin && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
+                            <div className="max-h-[90vh] overflow-y-auto w-full">
+                                <AdminForm 
+                                    onSave={handleSaveNewEntity}
+                                    onCancel={() => {
+                                        setShowAdmin(false);
+                                        setEntityToEdit(null);
+                                    }}
+                                    entityToEdit={entityToEdit}
+                                />
                             </div>
                         </div>
-                    </div>
+                    )}
 
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {/* Entity Search & List */}
-                            <div className="lg:col-span-1">
-                                <div className="bg-white rounded-lg shadow">
-                                    <div className="p-4 border-b">
-                                        <div className="relative">
-                                            <Icon type='search' className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                                            <input
-                                                type="text"
-                                                placeholder="Search entities..."
-                                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                value={searchTerm}
-                                                onChange={(e) => setSearchTerm(e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="max-h-96 overflow-y-auto">
-                                        {filteredEntities.map((entity) => (
-                                            <div
-                                                key={entity.id}
-                                                className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
-                                                    selectedEntity?.id === entity.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                                                }`}
-                                                onClick={() => setSelectedEntity(entity)}
-                                            >
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center space-x-2 mb-1">
-                                                            {getTypeIcon(entity.type)}
-                                                            <h3 className="font-medium text-gray-900">{entity.name}</h3>
-                                                        </div>
-                                                        <p className="text-sm text-gray-600">{entity.phoneNumbers[0]?.number}</p>
-                                                        <p className="text-xs text-gray-500 truncate">{entity.address}</p>
-                                                    </div>
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(entity.type)}`}>
-                                                        {entity.type === 'facility' ? 'Facility' : '911 Center'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Entity Details */}
-                            <div className="lg:col-span-2">
-                                {selectedEntity ? (
-                                    <div className="space-y-6">
-                                        {/* Header */}
-                                        <div className="bg-white rounded-lg shadow p-6">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div>
-                                                    <div className="flex items-center space-x-2 mb-2">
-                                                        {getTypeIcon(selectedEntity.type)}
-                                                        <h2 className="text-2xl font-bold text-gray-900">{selectedEntity.name}</h2>
-                                                    </div>
-                                                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getTypeColor(selectedEntity.type)}`}>
-                                                        {selectedEntity.type === 'facility' ? 'Medical Facility' : '911 Dispatch Center'}
-                                                    </span>
-                                                </div>
-                                                {isAdminAuthenticated && (
-                                                    <div className="flex items-center space-x-2">
-                                                        <button
-                                                            onClick={() => handleDeleteEntity(selectedEntity.id)}
-                                                            className="flex items-center space-x-1 px-3 py-1 rounded-md text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                                                        >
-                                                            <Icon type='trash' className="h-4 w-4" />
-                                                            <span>Delete</span>
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="space-y-3">
-                                                <div className="flex items-start space-x-2">
-                                                    <Icon type='map' className="h-4 w-4 text-gray-400 mt-1" />
-                                                    <span className="text-gray-700">{selectedEntity.address}</span>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
-                                                    <Icon type='calendar' className="h-4 w-4 text-gray-400" />
-                                                    <span className="text-gray-600">Last Contact: {selectedEntity.lastContact}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Phone Numbers */}
-                                        <div className="bg-white rounded-lg shadow p-6">
-                                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                                <Icon type='phone' className="h-5 w-5 mr-2" />
-                                                Department Phone Numbers
-                                            </h3>
-                                            <div className="space-y-3">
-                                                {selectedEntity.phoneNumbers.map((phone, index) => (
-                                                    <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-md">
-                                                        <div className="flex items-center space-x-4 flex-1">
-                                                            <span className="font-medium text-gray-900 min-w-24">{phone.department}:</span>
-                                                            <span className="font-mono text-blue-600 text-lg">{phone.number}</span>
-                                                        </div>
-                                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPhoneTypeColor(phone.type)}`}>
-                                                            {phone.type}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Service Contract */}
-                                        <div className="bg-white rounded-lg shadow p-6">
-                                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Contracted Service</h3>
-                                            <p className="text-gray-700 font-medium">{selectedEntity.contractedService}</p>
-                                        </div>
-
-                                        {/* Contractual Obligations */}
-                                        <div className="bg-white rounded-lg shadow p-6">
-                                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                                <Icon type='calendar' className="h-5 w-5 mr-2" />
-                                                Response Time Requirements
-                                            </h3>
-                                            {selectedEntity.contractualObligations && selectedEntity.contractualObligations.length > 0 ? (
-                                                <div className="space-y-3">
-                                                    {selectedEntity.contractualObligations.map((obligation, index) => (
-                                                        <div key={index} className="border border-gray-200 rounded-md p-4">
-                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                                <div>
-                                                                    <h4 className="font-medium text-gray-900 text-sm mb-1">Call Type</h4>
-                                                                    <span className="text-blue-700 font-semibold">{obligation.callType}</span>
-                                                                </div>
-                                                                <div>
-                                                                    <h4 className="font-medium text-gray-900 text-sm mb-1">Response Time</h4>
-                                                                    <span className="text-green-700 font-bold text-lg">{obligation.responseTime}</span>
-                                                                </div>
-                                                                <div className="md:col-span-1">
-                                                                    <h4 className="font-medium text-gray-900 text-sm mb-1">Requirements</h4>
-                                                                    <span className="text-gray-700">{obligation.requirements}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <p className="text-gray-500 italic">No contractual obligations specified</p>
-                                            )}
-                                        </div>
-
-                                        {/* ER Entrance Info (Facilities Only) */}
-                                        {selectedEntity.type === 'facility' && (
-                                            <div className="bg-white rounded-lg shadow p-6">
-                                                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                                    <Icon type='truck' className="h-5 w-5 mr-2" />
-                                                    ER Entrance Information
-                                                </h3>
-                                                <p className="text-gray-700 bg-blue-50 p-4 rounded-md">{selectedEntity.erEntrance}</p>
-                                            </div>
-                                        )}
-
-                                        {/* Flight Program Info */}
-                                        <div className="bg-white rounded-lg shadow p-6">
-                                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                                <Icon type='plane' className="h-5 w-5 mr-2" />
-                                                Flight Program Status
-                                            </h3>
-                                            <div className="space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-gray-600">One Call Facility/Center:</span>
-                                                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                                        selectedEntity.flightProgram.isOneCall 
-                                                            ? 'bg-green-100 text-green-800' 
-                                                            : 'bg-red-100 text-red-800'
-                                                    }`}>
-                                                        {selectedEntity.flightProgram.isOneCall ? 'Yes' : 'No'}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-gray-600">Flight Program Participant:</span>
-                                                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                                        selectedEntity.flightProgram.participating 
-                                                            ? 'bg-green-100 text-green-800' 
-                                                            : 'bg-red-100 text-red-800'
-                                                    }`}>
-                                                        {selectedEntity.flightProgram.participating ? 'Active' : 'Not Participating'}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-gray-600">Flight By Ground:</span>
-                                                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                                        selectedEntity.flightProgram.flightByGround 
-                                                            ? 'bg-yellow-100 text-yellow-800' 
-                                                            : 'bg-gray-100 text-gray-800'
-                                                    }`}>
-                                                        {selectedEntity.flightProgram.flightByGround ? 'Required' : 'Not Required'}
-                                                    </span>
-                                                </div>
-                                                {selectedEntity.flightProgram.notes && (
-                                                    <p className="text-gray-700 text-sm bg-gray-50 p-3 rounded-md">{selectedEntity.flightProgram.notes}</p>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Backup Services */}
-                                        <div className="bg-white rounded-lg shadow p-6">
-                                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                                <Icon type='alert' className="h-5 w-5 mr-2 text-orange-500" />
-                                                Backup Services
-                                            </h3>
-                                            {selectedEntity.type === 'facility' ? (
-                                                <div className="space-y-4">
-                                                    {/* Air Service Backups */}
-                                                    {(selectedEntity.backupServices.airBackup1 || selectedEntity.backupServices.airBackup2) ? (
-                                                        <div>
-                                                            <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                                                                <Icon type='plane' className="h-4 w-4 mr-1" />
-                                                                Air Service Backups
-                                                            </h4>
-                                                            <div className="space-y-2 pl-5">
-                                                                {selectedEntity.backupServices.airBackup1?.service && (
-                                                                    <div className="bg-orange-50 p-3 rounded-md">
-                                                                        <div className="flex justify-between items-start">
-                                                                            <div>
-                                                                                <span className="font-medium text-gray-900">Backup 1: </span>
-                                                                                <span className="text-gray-700">{selectedEntity.backupServices.airBackup1.service}</span>
-                                                                            </div>
-                                                                            {selectedEntity.backupServices.airBackup1.phone && (
-                                                                                <span className="font-mono text-blue-600">{selectedEntity.backupServices.airBackup1.phone}</span>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                                {selectedEntity.backupServices.airBackup2?.service && (
-                                                                    <div className="bg-orange-50 p-3 rounded-md">
-                                                                        <div className="flex justify-between items-start">
-                                                                            <div>
-                                                                                <span className="font-medium text-gray-900">Backup 2: </span>
-                                                                                <span className="text-gray-700">{selectedEntity.backupServices.airBackup2.service}</span>
-                                                                            </div>
-                                                                            {selectedEntity.backupServices.airBackup2.phone && (
-                                                                                <span className="font-mono text-blue-600">{selectedEntity.backupServices.airBackup2.phone}</span>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ) : null}
-                                                    {/* Ground Service Backups */}
-                                                    {(selectedEntity.backupServices.groundBackup1 || selectedEntity.backupServices.groundBackup2 || 
-                                                      selectedEntity.backupServices.groundBackup3 || selectedEntity.backupServices.groundBackup4) ? (
-                                                        <div>
-                                                            <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                                                                <Icon type='truck' className="h-4 w-4 mr-1" />
-                                                                Ground Service Backups
-                                                            </h4>
-                                                            <div className="space-y-2 pl-5">
-                                                                {selectedEntity.backupServices.groundBackup1?.service && (
-                                                                    <div className="bg-blue-50 p-3 rounded-md">
-                                                                        <div className="flex justify-between items-start">
-                                                                            <div>
-                                                                                <span className="font-medium text-gray-900">Backup 1: </span>
-                                                                                <span className="text-gray-700">{selectedEntity.backupServices.groundBackup1.service}</span>
-                                                                            </div>
-                                                                            {selectedEntity.backupServices.groundBackup1.phone && (
-                                                                                <span className="font-mono text-blue-600">{selectedEntity.backupServices.groundBackup1.phone}</span>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                                {selectedEntity.backupServices.groundBackup2?.service && (
-                                                                    <div className="bg-blue-50 p-3 rounded-md">
-                                                                        <div className="flex justify-between items-start">
-                                                                            <div>
-                                                                                <span className="font-medium text-gray-900">Backup 2: </span>
-                                                                                <span className="text-gray-700">{selectedEntity.backupServices.groundBackup2.service}</span>
-                                                                            </div>
-                                                                            {selectedEntity.backupServices.groundBackup2.phone && (
-                                                                                <span className="font-mono text-blue-600">{selectedEntity.backupServices.groundBackup2.phone}</span>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                                {selectedEntity.backupServices.groundBackup3?.service && (
-                                                                    <div className="bg-blue-50 p-3 rounded-md">
-                                                                        <div className="flex justify-between items-start">
-                                                                            <div>
-                                                                                <span className="font-medium text-gray-900">Backup 3: </span>
-                                                                                <span className="text-gray-700">{selectedEntity.backupServices.groundBackup3.service}</span>
-                                                                            </div>
-                                                                            {selectedEntity.backupServices.groundBackup3.phone && (
-                                                                                <span className="font-mono text-blue-600">{selectedEntity.backupServices.groundBackup3.phone}</span>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                                {selectedEntity.backupServices.groundBackup4?.service && (
-                                                                    <div className="bg-blue-50 p-3 rounded-md">
-                                                                        <div className="flex justify-between items-start">
-                                                                            <div>
-                                                                                <span className="font-medium text-gray-900">Backup 4: </span>
-                                                                                <span className="text-gray-700">{selectedEntity.backupServices.groundBackup4.service}</span>
-                                                                            </div>
-                                                                            {selectedEntity.backupServices.groundBackup4.phone && (
-                                                                                <span className="font-mono text-blue-600">{selectedEntity.backupServices.groundBackup4.phone}</span>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ) : null}
-                                                    {/* Legacy display for old data format */}
-                                                    {selectedEntity.backupServices.airService && (
-                                                        <div>
-                                                            <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                                                                <Icon type='plane' className="h-4 w-4 mr-1" />
-                                                                Air Service Backup
-                                                            </h4>
-                                                            <p className="text-gray-700 bg-orange-50 p-3 rounded-md font-medium">{selectedEntity.backupServices.airService}</p>
-                                                        </div>
-                                                    )}
-                                                    {selectedEntity.backupServices.groundService && (
-                                                        <div>
-                                                            <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                                                                <Icon type='truck' className="h-4 w-4 mr-1" />
-                                                                Ground Service Backup
-                                                            </h4>
-                                                            <p className="text-gray-700 bg-blue-50 p-3 rounded-md font-medium">{selectedEntity.backupServices.groundService}</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-4">
-                                                    <div>
-                                                        <h4 className="font-medium text-gray-900 mb-2">No Available Units Contact</h4>
-                                                        <p className="text-gray-700 bg-red-50 p-3 rounded-md font-medium">{selectedEntity.backupServices.noUnitsContact}</p>
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-medium text-gray-900 mb-2">Mutual Aid Contact</h4>
-                                                        <p className="text-gray-700 bg-yellow-50 p-3 rounded-md font-medium">{selectedEntity.backupServices.mutualAid}</p>
-                                                    </div>
-                                                    {selectedEntity.countyInfo && (
-                                                        <div>
-                                                            <h4 className="font-medium text-gray-900 mb-2">Coverage Area</h4>
-                                                            <div className="bg-gray-50 p-3 rounded-md space-y-1">
-                                                                <p className="text-sm">
-                                                                    <span className="font-medium">Area: </span>
-                                                                    {selectedEntity.countyInfo.coverage}
-                                                                </p>
-                                                                <p className="text-sm">
-                                                                    <span className="font-medium">Population: </span>
-                                                                    {selectedEntity.countyInfo.population}
-                                                                </p>
-                                                                <p className="text-sm">
-                                                                    <span className="font-medium">Square Miles: </span>
-                                                                    {selectedEntity.countyInfo.squareMiles}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Notes */}
-                                        <div className="bg-white rounded-lg shadow p-6">
-                                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Operational Notes</h3>
-                                            <p className="text-gray-700 bg-gray-50 p-4 rounded-md">{selectedEntity.notes}</p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="bg-white rounded-lg shadow p-8 text-center">
-                                        <Icon type='building' className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                                        <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Facility or 911 Center</h3>
-                                        <p className="text-gray-600">Search and select from the list to view complete emergency services information.</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+                    {/* Password Modal */}
+                    <PasswordModal
+                        isOpen={showAdminPasswordModal}
+                        onClose={() => setShowAdminPasswordModal(false)}
+                        onSubmit={handleAdminPasswordSubmit}
+                        title="Admin Authentication"
+                        message="Please enter the admin password to continue."
+                    />
                 </div>
             );
         };
