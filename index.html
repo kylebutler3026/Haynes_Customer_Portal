@@ -9,6 +9,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -20,6 +21,11 @@
     
     .gradient-bg {
         background: linear-gradient(135deg, #1a365d 0%, #2563eb 100%);
+    }
+    
+    /* Ensure full height for login screen */
+    .min-h-screen {
+        min-height: 100vh;
     }
     
     .card-hover:hover {
@@ -90,7 +96,7 @@
         const [entityToEdit, setEntityToEdit] = useState(null);
         const [payorToEdit, setPayorToEdit] = useState(null);
 
-        // Load entities from Supabase (your original working code)
+        // Load entities from Supabase
         const loadEntities = useCallback(async () => {
             try {
                 const { data, error } = await supabase
@@ -112,20 +118,36 @@
                     contractedService: entity.contracted_service || '',
                     contractualObligations: entity.contractual_obligations || [],
                     erEntrance: entity.er_entrance || '',
-                    flightProgram: entity.flight_program || { 
+                    flightProgram: entity.flight_program ? { 
+                        isOneCall: entity.flight_program.isOneCall || false,
+                        participating: entity.flight_program.participating || false,
+                        flightByGround: entity.flight_program.flightByGround || false,
+                        notes: entity.flight_program.notes || '',
+                        landingZones: entity.flight_program.landingZones || []
+                    } : { 
                         isOneCall: false, 
                         participating: false, 
                         flightByGround: false, 
                         notes: '',
                         landingZones: []
                     },
-                    backupServices: entity.backup_services || {
+                    backupServices: entity.backup_services ? {
+                        airServices: entity.backup_services.airServices || [],
+                        groundServices: entity.backup_services.groundServices || [],
+                        noUnitsContact: entity.backup_services.noUnitsContact || '',
+                        mutualAid: entity.backup_services.mutualAid || ''
+                    } : {
                         airServices: [],
                         groundServices: [],
                         noUnitsContact: '',
                         mutualAid: ''
                     },
-                    countyInfo: entity.county_info || {
+                    countyInfo: entity.county_info ? {
+                        county: entity.county_info.county || '',
+                        sheriffAgencies: entity.county_info.sheriffAgencies || [],
+                        fireAgencies: entity.county_info.fireAgencies || [],
+                        emsAgencies: entity.county_info.emsAgencies || []
+                    } : {
                         county: '',
                         sheriffAgencies: [],
                         fireAgencies: [],
@@ -144,10 +166,9 @@
             }
         }, []);
 
-        // Load payors - placeholder for now until table is created
+        // Load payors from Supabase
         const loadPayors = useCallback(async () => {
             try {
-                // This will fail until the table is created, that's OK
                 const { data, error } = await supabase
                     .from('insurance_payors')
                     .select('*')
@@ -198,8 +219,20 @@
                 })
                 .subscribe();
 
+            const payorsSubscription = supabase
+                .channel('insurance_payors_changes')
+                .on('postgres_changes', { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'insurance_payors' 
+                }, payload => {
+                    loadPayors();
+                })
+                .subscribe();
+
             return () => {
                 entitiesSubscription.unsubscribe();
+                payorsSubscription.unsubscribe();
             };
         }, [loadEntities, loadPayors]);
 
@@ -224,7 +257,7 @@
             }
         };
 
-        // Your existing entity management functions (unchanged)
+        // Entity management functions
         const handleSaveNewEntity = async (formData) => {
             try {
                 const today = new Date().toISOString().split('T')[0];
@@ -240,7 +273,7 @@
                     backup_services: formData.backup_services,
                     county_info: formData.county_info,
                     notes: formData.notes,
-                    last_contact: today
+                    last_contact: formData.last_contact || today
                 };
 
                 if (formData.id) {
@@ -276,6 +309,55 @@
             }
         };
 
+        // NEW: Insurance Payor management functions
+        const handleSaveNewPayor = async (formData) => {
+            try {
+                const payorToSave = {
+                    name: formData.name,
+                    type: formData.type,
+                    website: formData.website,
+                    phone_numbers: formData.phone_numbers,
+                    emergency_ground: formData.emergency_ground,
+                    non_emergency_ground: formData.non_emergency_ground,
+                    rotor_wing: formData.rotor_wing,
+                    fixed_wing: formData.fixed_wing,
+                    reference_links: formData.reference_links,
+                    notes: formData.notes
+                };
+
+                if (formData.id) {
+                    const { data, error } = await supabase
+                        .from('insurance_payors')
+                        .update(payorToSave)
+                        .eq('id', formData.id)
+                        .select();
+
+                    if (error) {
+                        console.error('Error updating payor:', error);
+                        alert('Error updating payor. Please try again.');
+                        return;
+                    }
+                    setPayorToEdit(null);
+                } else {
+                    const { data, error } = await supabase
+                        .from('insurance_payors')
+                        .insert([payorToSave])
+                        .select();
+
+                    if (error) {
+                        console.error('Error saving payor:', error);
+                        alert('Error saving payor. Please try again.');
+                        return;
+                    }
+                }
+
+                setShowAdmin(false);
+            } catch (err) {
+                console.error('Error saving payor:', err);
+                alert('Error saving payor. Please try again.');
+            }
+        };
+
         const handleDeleteEntity = async (entityId) => {
             if (confirm('Are you sure you want to delete this entity?')) {
                 try {
@@ -298,8 +380,36 @@
             }
         };
 
+        const handleDeletePayor = async (payorId) => {
+            if (confirm('Are you sure you want to delete this payor?')) {
+                try {
+                    const { error } = await supabase
+                        .from('insurance_payors')
+                        .delete()
+                        .eq('id', payorId);
+
+                    if (error) {
+                        console.error('Error deleting payor:', error);
+                        alert('Error deleting payor. Please try again.');
+                        return;
+                    }
+
+                    setSelectedPayor(null);
+                } catch (err) {
+                    console.error('Error deleting payor:', err);
+                    alert('Error deleting payor. Please try again.');
+                }
+            }
+        };
+
         const handleEditEntity = (entity) => {
+            console.log('Editing entity:', entity);
             setEntityToEdit(entity);
+            setShowAdmin(true);
+        };
+
+        const handleEditPayor = (payor) => {
+            setPayorToEdit(payor);
             setShowAdmin(true);
         };
 
@@ -307,6 +417,11 @@
             entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             entity.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
             entity.type.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        const filteredPayors = payors.filter(payor =>
+            payor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            payor.type.toLowerCase().includes(searchTerm.toLowerCase())
         );
 
         const groupedEntities = useMemo(() => {
@@ -366,6 +481,1336 @@
                             </div>
                         </form>
                     </div>
+                </div>
+            );
+        };
+
+        // Entity Form Component
+        const EntityForm = ({ entity, onSave, onCancel }) => {
+            const [formData, setFormData] = useState({
+                id: entity?.id || null,
+                name: entity?.name || '',
+                type: entity?.type || 'hospital',
+                address: entity?.address || '',
+                phone_numbers: entity?.phoneNumbers && entity.phoneNumbers.length > 0 
+                    ? entity.phoneNumbers 
+                    : [{ label: '', number: '', description: '' }],
+                contracted_service: entity?.contractedService || '',
+                contractual_obligations: entity?.contractualObligations && entity.contractualObligations.length > 0 
+                    ? entity.contractualObligations 
+                    : [''],
+                er_entrance: entity?.erEntrance || '',
+                flight_program: entity?.flightProgram ? {
+                    isOneCall: entity.flightProgram.isOneCall || false,
+                    participating: entity.flightProgram.participating || false,
+                    flightByGround: entity.flightProgram.flightByGround || false,
+                    notes: entity.flightProgram.notes || '',
+                    landingZones: entity.flightProgram.landingZones && entity.flightProgram.landingZones.length > 0 
+                        ? entity.flightProgram.landingZones 
+                        : [{ name: '', coordinates: '', description: '' }]
+                } : { 
+                    isOneCall: false, 
+                    participating: false, 
+                    flightByGround: false, 
+                    notes: '',
+                    landingZones: [{ name: '', coordinates: '', description: '' }]
+                },
+                backup_services: entity?.backupServices ? {
+                    airServices: entity.backupServices.airServices && entity.backupServices.airServices.length > 0 
+                        ? entity.backupServices.airServices 
+                        : [{ name: '', phone: '', description: '' }],
+                    groundServices: entity.backupServices.groundServices && entity.backupServices.groundServices.length > 0 
+                        ? entity.backupServices.groundServices 
+                        : [{ name: '', phone: '', description: '' }],
+                    noUnitsContact: entity.backupServices.noUnitsContact || '',
+                    mutualAid: entity.backupServices.mutualAid || ''
+                } : {
+                    airServices: [{ name: '', phone: '', description: '' }],
+                    groundServices: [{ name: '', phone: '', description: '' }],
+                    noUnitsContact: '',
+                    mutualAid: ''
+                },
+                county_info: entity?.countyInfo ? {
+                    county: entity.countyInfo.county || '',
+                    sheriffAgencies: entity.countyInfo.sheriffAgencies && entity.countyInfo.sheriffAgencies.length > 0 
+                        ? entity.countyInfo.sheriffAgencies 
+                        : [{ name: '', phone: '', description: '' }],
+                    fireAgencies: entity.countyInfo.fireAgencies && entity.countyInfo.fireAgencies.length > 0 
+                        ? entity.countyInfo.fireAgencies 
+                        : [{ name: '', phone: '', description: '' }],
+                    emsAgencies: entity.countyInfo.emsAgencies && entity.countyInfo.emsAgencies.length > 0 
+                        ? entity.countyInfo.emsAgencies 
+                        : [{ name: '', phone: '', description: '' }]
+                } : {
+                    county: '',
+                    sheriffAgencies: [{ name: '', phone: '', description: '' }],
+                    fireAgencies: [{ name: '', phone: '', description: '' }],
+                    emsAgencies: [{ name: '', phone: '', description: '' }]
+                },
+                notes: entity?.notes || '',
+                last_contact: entity?.lastContact || ''
+            });
+
+            const handleChange = (field, value) => {
+                setFormData(prev => ({ ...prev, [field]: value }));
+            };
+
+            const handlePhoneChange = (index, field, value) => {
+                const newPhones = [...formData.phone_numbers];
+                newPhones[index] = { ...newPhones[index], [field]: value };
+                setFormData(prev => ({ ...prev, phone_numbers: newPhones }));
+            };
+
+            const addPhoneField = () => {
+                setFormData(prev => ({
+                    ...prev,
+                    phone_numbers: [...prev.phone_numbers, { label: '', number: '', description: '' }]
+                }));
+            };
+
+            const removePhoneField = (index) => {
+                if (formData.phone_numbers.length <= 1) return;
+                const newPhones = [...formData.phone_numbers];
+                newPhones.splice(index, 1);
+                setFormData(prev => ({ ...prev, phone_numbers: newPhones }));
+            };
+
+            const handleFlightProgramChange = (field, value) => {
+                setFormData(prev => ({
+                    ...prev,
+                    flight_program: { ...prev.flight_program, [field]: value }
+                }));
+            };
+
+            const handleLandingZoneChange = (index, field, value) => {
+                const newLandingZones = [...formData.flight_program.landingZones];
+                newLandingZones[index] = { ...newLandingZones[index], [field]: value };
+                setFormData(prev => ({
+                    ...prev,
+                    flight_program: { ...prev.flight_program, landingZones: newLandingZones }
+                }));
+            };
+
+            const addLandingZone = () => {
+                setFormData(prev => ({
+                    ...prev,
+                    flight_program: {
+                        ...prev.flight_program,
+                        landingZones: [...prev.flight_program.landingZones, { name: '', coordinates: '', description: '' }]
+                    }
+                }));
+            };
+
+            const removeLandingZone = (index) => {
+                const newLandingZones = [...formData.flight_program.landingZones];
+                newLandingZones.splice(index, 1);
+                setFormData(prev => ({
+                    ...prev,
+                    flight_program: { ...prev.flight_program, landingZones: newLandingZones }
+                }));
+            };
+
+            const handleBackupServiceChange = (serviceType, index, field, value) => {
+                const newServices = [...formData.backup_services[serviceType]];
+                newServices[index] = { ...newServices[index], [field]: value };
+                setFormData(prev => ({
+                    ...prev,
+                    backup_services: { ...prev.backup_services, [serviceType]: newServices }
+                }));
+            };
+
+            const addBackupService = (serviceType) => {
+                setFormData(prev => ({
+                    ...prev,
+                    backup_services: {
+                        ...prev.backup_services,
+                        [serviceType]: [...prev.backup_services[serviceType], { name: '', phone: '', description: '' }]
+                    }
+                }));
+            };
+
+            const removeBackupService = (serviceType, index) => {
+                const newServices = [...formData.backup_services[serviceType]];
+                newServices.splice(index, 1);
+                setFormData(prev => ({
+                    ...prev,
+                    backup_services: { ...prev.backup_services, [serviceType]: newServices }
+                }));
+            };
+
+            const handleAgencyChange = (agencyType, index, field, value) => {
+                const newAgencies = [...formData.county_info[agencyType]];
+                newAgencies[index] = { ...newAgencies[index], [field]: value };
+                setFormData(prev => ({
+                    ...prev,
+                    county_info: { ...prev.county_info, [agencyType]: newAgencies }
+                }));
+            };
+
+            const addAgency = (agencyType) => {
+                setFormData(prev => ({
+                    ...prev,
+                    county_info: {
+                        ...prev.county_info,
+                        [agencyType]: [...prev.county_info[agencyType], { name: '', phone: '', description: '' }]
+                    }
+                }));
+            };
+
+            const removeAgency = (agencyType, index) => {
+                const newAgencies = [...formData.county_info[agencyType]];
+                newAgencies.splice(index, 1);
+                setFormData(prev => ({
+                    ...prev,
+                    county_info: { ...prev.county_info, [agencyType]: newAgencies }
+                }));
+            };
+
+            const handleContractualObligationChange = (index, value) => {
+                const newObligations = [...formData.contractual_obligations];
+                newObligations[index] = value;
+                setFormData(prev => ({ ...prev, contractual_obligations: newObligations }));
+            };
+
+            const addContractualObligation = () => {
+                setFormData(prev => ({
+                    ...prev,
+                    contractual_obligations: [...prev.contractual_obligations, '']
+                }));
+            };
+
+            const removeContractualObligation = (index) => {
+                if (formData.contractual_obligations.length <= 1) return;
+                const newObligations = [...formData.contractual_obligations];
+                newObligations.splice(index, 1);
+                setFormData(prev => ({ ...prev, contractual_obligations: newObligations }));
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onSave(formData);
+            };
+
+            return (
+                <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+                        <h2 className="text-xl font-bold text-gray-900">
+                            {entity ? 'Edit Entity' : 'Add New Entity'}
+                        </h2>
+                        <button
+                            onClick={onCancel}
+                            className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-200"
+                        >
+                            <Icon type="x" />
+                        </button>
+                    </div>
+                    <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+                        {/* Basic Information */}
+                        <div>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Basic Information</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={formData.name}
+                                        onChange={(e) => handleChange('name', e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+                                    <select
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={formData.type}
+                                        onChange={(e) => handleChange('type', e.target.value)}
+                                        required
+                                    >
+                                        <option value="hospital">Hospital</option>
+                                        <option value="fire_station">Fire Station</option>
+                                        <option value="911_center">911 Center</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={formData.address}
+                                        onChange={(e) => handleChange('address', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Phone Numbers */}
+                        <div>
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-medium text-gray-900 text-lg border-b pb-2">Phone Numbers</h3>
+                                <button
+                                    type="button"
+                                    onClick={addPhoneField}
+                                    className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center"
+                                >
+                                    <Icon type="plus" className="mr-1" /> Add
+                                </button>
+                            </div>
+                            <div className="space-y-3">
+                                {formData.phone_numbers.map((phone, index) => (
+                                    <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
+                                        <div className="md:col-span-3">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={phone.label}
+                                                onChange={(e) => handlePhoneChange(index, 'label', e.target.value)}
+                                                placeholder="e.g., Main, Fax, Emergency"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Number *</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={phone.number}
+                                                onChange={(e) => handlePhoneChange(index, 'number', e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="md:col-span-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={phone.description}
+                                                onChange={(e) => handlePhoneChange(index, 'description', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="md:col-span-1">
+                                            {formData.phone_numbers.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removePhoneField(index)}
+                                                    className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
+                                                >
+                                                    <Icon type="trash" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Contracted Service */}
+                        <div>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Contracted Service</h3>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Primary Contracted Service</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={formData.contracted_service}
+                                        onChange={(e) => handleChange('contracted_service', e.target.value)}
+                                        placeholder="e.g., AirMed, STAT Med, etc."
+                                    />
+                                </div>
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="block text-sm font-medium text-gray-700">Contractual Obligations</label>
+                                        <button
+                                            type="button"
+                                            onClick={addContractualObligation}
+                                            className="px-2 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors text-sm flex items-center"
+                                        >
+                                            <Icon type="plus" className="mr-1" /> Add
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {formData.contractual_obligations.map((obligation, index) => (
+                                            <div key={index} className="flex items-center space-x-2">
+                                                <input
+                                                    type="text"
+                                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    value={obligation}
+                                                    onChange={(e) => handleContractualObligationChange(index, e.target.value)}
+                                                    placeholder="Contractual obligation details"
+                                                />
+                                                {formData.contractual_obligations.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeContractualObligation(index)}
+                                                        className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors"
+                                                    >
+                                                        <Icon type="trash" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ER Entrance */}
+                        <div>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">ER Entrance</h3>
+                            <textarea
+                                rows="3"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value={formData.er_entrance}
+                                onChange={(e) => handleChange('er_entrance', e.target.value)}
+                                placeholder="Directions to ER entrance, special instructions, etc."
+                            />
+                        </div>
+
+                        {/* Flight Program */}
+                        <div>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Flight Program</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="isOneCall"
+                                        className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                                        checked={formData.flight_program.isOneCall}
+                                        onChange={(e) => handleFlightProgramChange('isOneCall', e.target.checked)}
+                                    />
+                                    <label htmlFor="isOneCall" className="ml-2 block text-sm text-gray-900">
+                                        One Call
+                                    </label>
+                                </div>
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="participating"
+                                        className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                                        checked={formData.flight_program.participating}
+                                        onChange={(e) => handleFlightProgramChange('participating', e.target.checked)}
+                                    />
+                                    <label htmlFor="participating" className="ml-2 block text-sm text-gray-900">
+                                        Participating
+                                    </label>
+                                </div>
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="flightByGround"
+                                        className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                                        checked={formData.flight_program.flightByGround}
+                                        onChange={(e) => handleFlightProgramChange('flightByGround', e.target.checked)}
+                                    />
+                                    <label htmlFor="flightByGround" className="ml-2 block text-sm text-gray-900">
+                                        Flight By Ground
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                <textarea
+                                    rows="3"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={formData.flight_program.notes}
+                                    onChange={(e) => handleFlightProgramChange('notes', e.target.value)}
+                                    placeholder="Special flight program notes or instructions"
+                                />
+                            </div>
+                            
+                            {/* Landing Zones for 911 Centers */}
+                            {formData.type === '911_center' && (
+                                <div>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h4 className="font-medium text-gray-900">Known Landing Zones</h4>
+                                        <button
+                                            type="button"
+                                            onClick={addLandingZone}
+                                            className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
+                                        >
+                                            <Icon type="plus" className="mr-1" /> Add
+                                        </button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {formData.flight_program.landingZones.map((zone, index) => (
+                                            <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
+                                                <div className="md:col-span-4">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Zone Name</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        value={zone.name}
+                                                        onChange={(e) => handleLandingZoneChange(index, 'name', e.target.value)}
+                                                        placeholder="e.g., Downtown LZ, Park LZ"
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-3">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Coordinates</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        value={zone.coordinates}
+                                                        onChange={(e) => handleLandingZoneChange(index, 'coordinates', e.target.value)}
+                                                        placeholder="e.g., 34.0522,-118.2437"
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-4">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        value={zone.description}
+                                                        onChange={(e) => handleLandingZoneChange(index, 'description', e.target.value)}
+                                                        placeholder="Special instructions or notes"
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-1">
+                                                    {formData.flight_program.landingZones.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeLandingZone(index)}
+                                                            className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
+                                                        >
+                                                            <Icon type="trash" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Backup Services */}
+                        <div>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Backup Services</h3>
+                            <div className="space-y-6">
+                                {/* Air Services */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h4 className="font-medium text-gray-900">Air Services</h4>
+                                        <button
+                                            type="button"
+                                            onClick={() => addBackupService('airServices')}
+                                            className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
+                                        >
+                                            <Icon type="plus" className="mr-1" /> Add
+                                        </button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {formData.backup_services.airServices.map((service, index) => (
+                                            <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
+                                                <div className="md:col-span-4">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Service Name *</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        value={service.name}
+                                                        onChange={(e) => handleBackupServiceChange('airServices', index, 'name', e.target.value)}
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-3">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        value={service.phone}
+                                                        onChange={(e) => handleBackupServiceChange('airServices', index, 'phone', e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-4">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        value={service.description}
+                                                        onChange={(e) => handleBackupServiceChange('airServices', index, 'description', e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-1">
+                                                    {formData.backup_services.airServices.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeBackupService('airServices', index)}
+                                                            className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
+                                                        >
+                                                            <Icon type="trash" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                
+                                {/* Ground Services */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h4 className="font-medium text-gray-900">Ground Services</h4>
+                                        <button
+                                            type="button"
+                                            onClick={() => addBackupService('groundServices')}
+                                            className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
+                                        >
+                                            <Icon type="plus" className="mr-1" /> Add
+                                        </button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {formData.backup_services.groundServices.map((service, index) => (
+                                            <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
+                                                <div className="md:col-span-4">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Service Name *</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        value={service.name}
+                                                        onChange={(e) => handleBackupServiceChange('groundServices', index, 'name', e.target.value)}
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-3">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        value={service.phone}
+                                                        onChange={(e) => handleBackupServiceChange('groundServices', index, 'phone', e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-4">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        value={service.description}
+                                                        onChange={(e) => handleBackupServiceChange('groundServices', index, 'description', e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-1">
+                                                    {formData.backup_services.groundServices.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeBackupService('groundServices', index)}
+                                                            className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
+                                                        >
+                                                            <Icon type="trash" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">No Units Contact Protocol</label>
+                                        <textarea
+                                            rows="2"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            value={formData.backup_services.noUnitsContact}
+                                            onChange={(e) => setFormData(prev => ({
+                                                ...prev,
+                                                backup_services: { ...prev.backup_services, noUnitsContact: e.target.value }
+                                            }))}
+                                            placeholder="Instructions when no units are available"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Mutual Aid Agreements</label>
+                                        <textarea
+                                            rows="2"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            value={formData.backup_services.mutualAid}
+                                            onChange={(e) => setFormData(prev => ({
+                                                ...prev,
+                                                backup_services: { ...prev.backup_services, mutualAid: e.target.value }
+                                            }))}
+                                            placeholder="Details about mutual aid agreements"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* County Information */}
+                        <div>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">County Information</h3>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">County</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={formData.county_info.county}
+                                    onChange={(e) => setFormData(prev => ({
+                                        ...prev,
+                                        county_info: { ...prev.county_info, county: e.target.value }
+                                    }))}
+                                    placeholder="County name"
+                                />
+                            </div>
+                            
+                            {/* Sheriff Agencies */}
+                            <div className="mb-4">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h4 className="font-medium text-gray-900">Sheriff Agencies</h4>
+                                    <button
+                                        type="button"
+                                        onClick={() => addAgency('sheriffAgencies')}
+                                        className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
+                                    >
+                                        <Icon type="plus" className="mr-1" /> Add
+                                    </button>
+                                </div>
+                                <div className="space-y-3">
+                                    {formData.county_info.sheriffAgencies.map((agency, index) => (
+                                        <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
+                                            <div className="md:col-span-4">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Agency Name *</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    value={agency.name}
+                                                    onChange={(e) => handleAgencyChange('sheriffAgencies', index, 'name', e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="md:col-span-3">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    value={agency.phone}
+                                                    onChange={(e) => handleAgencyChange('sheriffAgencies', index, 'phone', e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="md:col-span-4">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    value={agency.description}
+                                                    onChange={(e) => handleAgencyChange('sheriffAgencies', index, 'description', e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="md:col-span-1">
+                                                {formData.county_info.sheriffAgencies.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeAgency('sheriffAgencies', index)}
+                                                        className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
+                                                    >
+                                                        <Icon type="trash" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            {/* Fire Agencies */}
+                            <div className="mb-4">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h4 className="font-medium text-gray-900">Fire Agencies</h4>
+                                    <button
+                                        type="button"
+                                        onClick={() => addAgency('fireAgencies')}
+                                        className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
+                                    >
+                                        <Icon type="plus" className="mr-1" /> Add
+                                    </button>
+                                </div>
+                                <div className="space-y-3">
+                                    {formData.county_info.fireAgencies.map((agency, index) => (
+                                        <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
+                                            <div className="md:col-span-4">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Agency Name *</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    value={agency.name}
+                                                    onChange={(e) => handleAgencyChange('fireAgencies', index, 'name', e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="md:col-span-3">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    value={agency.phone}
+                                                    onChange={(e) => handleAgencyChange('fireAgencies', index, 'phone', e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="md:col-span-4">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    value={agency.description}
+                                                    onChange={(e) => handleAgencyChange('fireAgencies', index, 'description', e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="md:col-span-1">
+                                                {formData.county_info.fireAgencies.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeAgency('fireAgencies', index)}
+                                                        className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
+                                                    >
+                                                        <Icon type="trash" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            {/* EMS Agencies */}
+                            <div className="mb-4">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h4 className="font-medium text-gray-900">EMS Agencies</h4>
+                                    <button
+                                        type="button"
+                                        onClick={() => addAgency('emsAgencies')}
+                                        className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
+                                    >
+                                        <Icon type="plus" className="mr-1" /> Add
+                                    </button>
+                                </div>
+                                <div className="space-y-3">
+                                    {formData.county_info.emsAgencies.map((agency, index) => (
+                                        <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
+                                            <div className="md:col-span-4">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Agency Name *</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    value={agency.name}
+                                                    onChange={(e) => handleAgencyChange('emsAgencies', index, 'name', e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="md:col-span-3">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    value={agency.phone}
+                                                    onChange={(e) => handleAgencyChange('emsAgencies', index, 'phone', e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="md:col-span-4">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    value={agency.description}
+                                                    onChange={(e) => handleAgencyChange('emsAgencies', index, 'description', e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="md:col-span-1">
+                                                {formData.county_info.emsAgencies.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeAgency('emsAgencies', index)}
+                                                        className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
+                                                    >
+                                                        <Icon type="trash" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Notes */}
+                        <div>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Additional Notes</h3>
+                            <textarea
+                                rows="4"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value={formData.notes}
+                                onChange={(e) => handleChange('notes', e.target.value)}
+                                placeholder="Any additional notes or information about this entity"
+                            />
+                        </div>
+
+                        {/* Last Contact */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Last Contact Date</label>
+                            <input
+                                type="date"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value={formData.last_contact}
+                                onChange={(e) => handleChange('last_contact', e.target.value)}
+                            />
+                        </div>
+
+                        {/* Form Actions */}
+                        <div className="flex justify-end space-x-3 pt-4 border-t">
+                            <button
+                                type="button"
+                                onClick={onCancel}
+                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                            >
+                                {entity ? 'Update Entity' : 'Add Entity'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            );
+        };
+
+        // Payor Form Component
+        const PayorForm = ({ payor, onSave, onCancel }) => {
+            const [formData, setFormData] = useState({
+                id: payor?.id || null,
+                name: payor?.name || '',
+                type: payor?.type || 'insurance',
+                website: payor?.website || '',
+                phone_numbers: payor?.phoneNumbers || [{ label: '', number: '', description: '' }],
+                emergency_ground: payor?.emergencyGround || { phone: '', preauth_required: false, notes: '' },
+                non_emergency_ground: payor?.nonEmergencyGround || { phone: '', preauth_required: false, notes: '' },
+                rotor_wing: payor?.rotorWing || { phone: '', preauth_required: false, notes: '' },
+                fixed_wing: payor?.fixedWing || { phone: '', preauth_required: false, notes: '' },
+                reference_links: payor?.referenceLinks || [{ title: '', url: '', description: '' }],
+                notes: payor?.notes || ''
+            });
+
+            const handleChange = (field, value) => {
+                setFormData(prev => ({ ...prev, [field]: value }));
+            };
+
+            const handlePhoneChange = (index, field, value) => {
+                const newPhones = [...formData.phone_numbers];
+                newPhones[index] = { ...newPhones[index], [field]: value };
+                setFormData(prev => ({ ...prev, phone_numbers: newPhones }));
+            };
+
+            const addPhoneField = () => {
+                setFormData(prev => ({
+                    ...prev,
+                    phone_numbers: [...prev.phone_numbers, { label: '', number: '', description: '' }]
+                }));
+            };
+
+            const removePhoneField = (index) => {
+                if (formData.phone_numbers.length <= 1) return;
+                const newPhones = [...formData.phone_numbers];
+                newPhones.splice(index, 1);
+                setFormData(prev => ({ ...prev, phone_numbers: newPhones }));
+            };
+
+            const handleServiceChange = (serviceType, field, value) => {
+                setFormData(prev => ({
+                    ...prev,
+                    [serviceType]: { ...prev[serviceType], [field]: value }
+                }));
+            };
+
+            const handleReferenceLinkChange = (index, field, value) => {
+                const newLinks = [...formData.reference_links];
+                newLinks[index] = { ...newLinks[index], [field]: value };
+                setFormData(prev => ({ ...prev, reference_links: newLinks }));
+            };
+
+            const addReferenceLink = () => {
+                setFormData(prev => ({
+                    ...prev,
+                    reference_links: [...prev.reference_links, { title: '', url: '', description: '' }]
+                }));
+            };
+
+            const removeReferenceLink = (index) => {
+                if (formData.reference_links.length <= 1) return;
+                const newLinks = [...formData.reference_links];
+                newLinks.splice(index, 1);
+                setFormData(prev => ({ ...prev, reference_links: newLinks }));
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onSave(formData);
+            };
+
+            return (
+                <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+                        <h2 className="text-xl font-bold text-gray-900">
+                            {payor ? 'Edit Payor' : 'Add New Payor'}
+                        </h2>
+                        <button
+                            onClick={onCancel}
+                            className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-200"
+                        >
+                            <Icon type="x" />
+                        </button>
+                    </div>
+                    <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+                        {/* Basic Information */}
+                        <div>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Basic Information</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={formData.name}
+                                        onChange={(e) => handleChange('name', e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+                                    <select
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={formData.type}
+                                        onChange={(e) => handleChange('type', e.target.value)}
+                                        required
+                                    >
+                                        <option value="insurance">Insurance</option>
+                                        <option value="government">Government</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                                    <input
+                                        type="url"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={formData.website}
+                                        onChange={(e) => handleChange('website', e.target.value)}
+                                        placeholder="https://example.com"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Phone Numbers */}
+                        <div>
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-medium text-gray-900 text-lg border-b pb-2">Phone Numbers</h3>
+                                <button
+                                    type="button"
+                                    onClick={addPhoneField}
+                                    className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center"
+                                >
+                                    <Icon type="plus" className="mr-1" /> Add
+                                </button>
+                            </div>
+                            <div className="space-y-3">
+                                {formData.phone_numbers.map((phone, index) => (
+                                    <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
+                                        <div className="md:col-span-3">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={phone.label}
+                                                onChange={(e) => handlePhoneChange(index, 'label', e.target.value)}
+                                                placeholder="e.g., Main, Claims, Authorization"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Number *</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={phone.number}
+                                                onChange={(e) => handlePhoneChange(index, 'number', e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="md:col-span-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={phone.description}
+                                                onChange={(e) => handlePhoneChange(index, 'description', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="md:col-span-1">
+                                            {formData.phone_numbers.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removePhoneField(index)}
+                                                    className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
+                                                >
+                                                    <Icon type="trash" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Service Categories */}
+                        <div>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Service Categories</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Emergency Ground */}
+                                <div className="bg-gray-50 p-4 rounded-md">
+                                    <h4 className="font-medium text-gray-900 mb-3">Emergency Ground</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={formData.emergency_ground.phone}
+                                                onChange={(e) => handleServiceChange('emergency_ground', 'phone', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                id="emergencyGroundPreauth"
+                                                className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                                                checked={formData.emergency_ground.preauth_required}
+                                                onChange={(e) => handleServiceChange('emergency_ground', 'preauth_required', e.target.checked)}
+                                            />
+                                            <label htmlFor="emergencyGroundPreauth" className="ml-2 block text-sm text-gray-900">
+                                                Pre-authorization required
+                                            </label>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                            <textarea
+                                                rows="2"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={formData.emergency_ground.notes}
+                                                onChange={(e) => handleServiceChange('emergency_ground', 'notes', e.target.value)}
+                                                placeholder="Special instructions or notes"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Non-Emergency Ground */}
+                                <div className="bg-gray-50 p-4 rounded-md">
+                                    <h4 className="font-medium text-gray-900 mb-3">Non-Emergency Ground</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={formData.non_emergency_ground.phone}
+                                                onChange={(e) => handleServiceChange('non_emergency_ground', 'phone', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                id="nonEmergencyGroundPreauth"
+                                                className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                                                checked={formData.non_emergency_ground.preauth_required}
+                                                onChange={(e) => handleServiceChange('non_emergency_ground', 'preauth_required', e.target.checked)}
+                                            />
+                                            <label htmlFor="nonEmergencyGroundPreauth" className="ml-2 block text-sm text-gray-900">
+                                                Pre-authorization required
+                                            </label>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                            <textarea
+                                                rows="2"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={formData.non_emergency_ground.notes}
+                                                onChange={(e) => handleServiceChange('non_emergency_ground', 'notes', e.target.value)}
+                                                placeholder="Special instructions or notes"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Rotor Wing */}
+                                <div className="bg-gray-50 p-4 rounded-md">
+                                    <h4 className="font-medium text-gray-900 mb-3">Rotor Wing</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={formData.rotor_wing.phone}
+                                                onChange={(e) => handleServiceChange('rotor_wing', 'phone', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                id="rotorWingPreauth"
+                                                className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                                                checked={formData.rotor_wing.preauth_required}
+                                                onChange={(e) => handleServiceChange('rotor_wing', 'preauth_required', e.target.checked)}
+                                            />
+                                            <label htmlFor="rotorWingPreauth" className="ml-2 block text-sm text-gray-900">
+                                                Pre-authorization required
+                                            </label>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                            <textarea
+                                                rows="2"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={formData.rotor_wing.notes}
+                                                onChange={(e) => handleServiceChange('rotor_wing', 'notes', e.target.value)}
+                                                placeholder="Special instructions or notes"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Fixed Wing */}
+                                <div className="bg-gray-50 p-4 rounded-md">
+                                    <h4 className="font-medium text-gray-900 mb-3">Fixed Wing</h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={formData.fixed_wing.phone}
+                                                onChange={(e) => handleServiceChange('fixed_wing', 'phone', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                id="fixedWingPreauth"
+                                                className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                                                checked={formData.fixed_wing.preauth_required}
+                                                onChange={(e) => handleServiceChange('fixed_wing', 'preauth_required', e.target.checked)}
+                                            />
+                                            <label htmlFor="fixedWingPreauth" className="ml-2 block text-sm text-gray-900">
+                                                Pre-authorization required
+                                            </label>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                            <textarea
+                                                rows="2"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={formData.fixed_wing.notes}
+                                                onChange={(e) => handleServiceChange('fixed_wing', 'notes', e.target.value)}
+                                                placeholder="Special instructions or notes"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Reference Links */}
+                        <div>
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-medium text-gray-900 text-lg border-b pb-2">Reference Links</h3>
+                                <button
+                                    type="button"
+                                    onClick={addReferenceLink}
+                                    className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
+                                >
+                                    <Icon type="plus" className="mr-1" /> Add
+                                </button>
+                            </div>
+                            <div className="space-y-3">
+                                {formData.reference_links.map((link, index) => (
+                                    <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
+                                        <div className="md:col-span-3">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={link.title}
+                                                onChange={(e) => handleReferenceLinkChange(index, 'title', e.target.value)}
+                                                placeholder="e.g., Authorization Form, Coverage Policy"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">URL *</label>
+                                            <input
+                                                type="url"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={link.url}
+                                                onChange={(e) => handleReferenceLinkChange(index, 'url', e.target.value)}
+                                                placeholder="https://example.com/document"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="md:col-span-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={link.description}
+                                                onChange={(e) => handleReferenceLinkChange(index, 'description', e.target.value)}
+                                                placeholder="Brief description of the document"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-1">
+                                            {formData.reference_links.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeReferenceLink(index)}
+                                                    className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
+                                                >
+                                                    <Icon type="trash" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Notes */}
+                        <div>
+                            <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Additional Notes</h3>
+                            <textarea
+                                rows="4"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value={formData.notes}
+                                onChange={(e) => handleChange('notes', e.target.value)}
+                                placeholder="Any additional notes or information about this payor"
+                            />
+                        </div>
+
+                        {/* Form Actions */}
+                        <div className="flex justify-end space-x-3 pt-4 border-t">
+                            <button
+                                type="button"
+                                onClick={onCancel}
+                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                            >
+                                {payor ? 'Update Payor' : 'Add Payor'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             );
         };
@@ -511,7 +1956,7 @@
 
                     {/* Content based on active tab */}
                     {activeTab === 'entities' ? (
-                        // Your existing entity display code
+                        // Entity display code
                         loading ? (
                             <div className="text-center py-10">
                                 <p className="text-gray-500">Loading entities...</p>
@@ -535,7 +1980,7 @@
                                                             onClick={() => setSelectedEntity(entity)}
                                                         >
                                                             <div className="flex justify-between items-center">
-                                                                <div>
+                                                                <div onClick={() => console.log('Entity data:', entity)}>
                                                                     <h3 className="text-sm font-medium text-gray-900">{entity.name}</h3>
                                                                     {entity.address && (
                                                                         <p className="text-xs text-gray-500 flex items-center mt-1">
@@ -584,6 +2029,7 @@
                                         <div className="bg-white rounded-lg shadow-sm">
                                             <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
                                                 <h2 className="text-xl font-bold text-gray-900">{selectedEntity.name}</h2>
+                                                {console.log('Selected entity for view:', selectedEntity)}
                                                 <div className="flex space-x-2">
                                                     {isAdminAuthenticated && (
                                                         <>
@@ -604,6 +2050,7 @@
                                                 </div>
                                             </div>
                                             <div className="p-6">
+                                                {/* Entity detail display remains the same */}
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     {/* Basic Information */}
                                                     <div className="bg-gray-50 p-4 rounded-md shadow-sm">
@@ -953,30 +2400,56 @@
                             </div>
                         )
                     ) : (
-                        // Insurance Portal Tab - Add clickable selection
+                        // Insurance Portal Tab 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {/* Left Column: Simple Payor List */}
+                            {/* Left Column: Payor List */}
                             <div className="md:col-span-1">
                                 <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                                     <div className="bg-gray-50 px-4 py-3 border-b">
                                         <h2 className="text-lg font-medium text-gray-900">
-                                            Insurance Payors ({payors ? payors.length : 0})
+                                            Insurance Payors ({filteredPayors.length})
                                         </h2>
                                     </div>
                                     <div className="space-y-1 p-2">
-                                        {payors && payors.length > 0 ? (
-                                            payors.map((payor, index) => (
+                                        {filteredPayors && filteredPayors.length > 0 ? (
+                                            filteredPayors.map((payor, index) => (
                                                 <div 
-                                                    key={index} 
+                                                    key={payor.id || index} 
                                                     className={`p-3 rounded-md cursor-pointer transition-colors ${
-                                                        selectedPayor && selectedPayor.name === payor.name 
+                                                        selectedPayor && selectedPayor.id === payor.id 
                                                             ? 'bg-blue-50 border border-blue-200' 
                                                             : 'hover:bg-gray-50 border border-transparent'
                                                     }`}
                                                     onClick={() => setSelectedPayor(payor)}
                                                 >
-                                                    <div className="font-medium text-gray-900">{payor.name}</div>
-                                                    <div className="text-sm text-gray-600 capitalize">{payor.type?.replace('_', ' ')}</div>
+                                                    <div className="flex justify-between items-center">
+                                                        <div>
+                                                            <div className="font-medium text-gray-900">{payor.name}</div>
+                                                            <div className="text-sm text-gray-600 capitalize">{payor.type?.replace('_', ' ')}</div>
+                                                        </div>
+                                                        {isAdminAuthenticated && (
+                                                            <div className="flex space-x-1">
+                                                                <button
+                                                                    className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleEditPayor(payor);
+                                                                    }}
+                                                                >
+                                                                    <Icon type="edit" />
+                                                                </button>
+                                                                <button
+                                                                    className="p-1 text-red-600 hover:text-red-800 transition-colors"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDeletePayor(payor.id);
+                                                                    }}
+                                                                >
+                                                                    <Icon type="trash" />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))
                                         ) : (
@@ -998,9 +2471,29 @@
                             <div className="md:col-span-2">
                                 {selectedPayor ? (
                                     <div className="bg-white rounded-lg shadow-sm">
-                                        <div className="bg-gray-50 px-6 py-4 border-b">
-                                            <h2 className="text-xl font-bold text-gray-900">{selectedPayor.name}</h2>
-                                            <p className="text-sm text-gray-600 capitalize mt-1">{selectedPayor.type?.replace('_', ' ')}</p>
+                                        <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+                                            <div>
+                                                <h2 className="text-xl font-bold text-gray-900">{selectedPayor.name}</h2>
+                                                <p className="text-sm text-gray-600 capitalize mt-1">{selectedPayor.type?.replace('_', ' ')}</p>
+                                            </div>
+                                            <div className="flex space-x-2">
+                                                {isAdminAuthenticated && (
+                                                    <>
+                                                        <button
+                                                            className="px-3 py-1.5 bg-blue-100 text-blue-600 rounded-md flex items-center hover:bg-blue-200 transition-colors"
+                                                            onClick={() => handleEditPayor(selectedPayor)}
+                                                        >
+                                                            <Icon type="edit" className="mr-1" /> Edit
+                                                        </button>
+                                                        <button
+                                                            className="px-3 py-1.5 bg-red-100 text-red-600 rounded-md flex items-center hover:bg-red-200 transition-colors"
+                                                            onClick={() => handleDeletePayor(selectedPayor.id)}
+                                                        >
+                                                            <Icon type="trash" className="mr-1" /> Delete
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="p-6 space-y-6">
                                             {/* Basic Info */}
@@ -1049,610 +2542,160 @@
                                                 </div>
                                             )}
 
+                                            {/* Service Categories */}
+                                            <div>
+                                                <h3 className="font-medium text-gray-900 mb-3">Service Categories</h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {/* Emergency Ground */}
+                                                    <div className="bg-gray-50 p-4 rounded-md">
+                                                        <h4 className="font-medium text-gray-900 mb-2">Emergency Ground</h4>
+                                                        {selectedPayor.emergencyGround?.phone && (
+                                                            <p className="text-sm text-gray-600">Phone: <span className="font-mono text-blue-600">{selectedPayor.emergencyGround.phone}</span></p>
+                                                        )}
+                                                        {selectedPayor.emergencyGround?.preauth_required && (
+                                                            <p className="text-sm text-red-600 font-medium">Pre-authorization required</p>
+                                                        )}
+                                                        {selectedPayor.emergencyGround?.notes && (
+                                                            <p className="text-sm text-gray-600 mt-1">{selectedPayor.emergencyGround.notes}</p>
+                                                        )}
+                                                        {!selectedPayor.emergencyGround?.phone && !selectedPayor.emergencyGround?.notes && (
+                                                            <p className="text-sm text-gray-500">No details available</p>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Non-Emergency Ground */}
+                                                    <div className="bg-gray-50 p-4 rounded-md">
+                                                        <h4 className="font-medium text-gray-900 mb-2">Non-Emergency Ground</h4>
+                                                        {selectedPayor.nonEmergencyGround?.phone && (
+                                                            <p className="text-sm text-gray-600">Phone: <span className="font-mono text-blue-600">{selectedPayor.nonEmergencyGround.phone}</span></p>
+                                                        )}
+                                                        {selectedPayor.nonEmergencyGround?.preauth_required && (
+                                                            <p className="text-sm text-red-600 font-medium">Pre-authorization required</p>
+                                                        )}
+                                                        {selectedPayor.nonEmergencyGround?.notes && (
+                                                            <p className="text-sm text-gray-600 mt-1">{selectedPayor.nonEmergencyGround.notes}</p>
+                                                        )}
+                                                        {!selectedPayor.nonEmergencyGround?.phone && !selectedPayor.nonEmergencyGround?.notes && (
+                                                            <p className="text-sm text-gray-500">No details available</p>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Rotor Wing */}
+                                                    <div className="bg-gray-50 p-4 rounded-md">
+                                                        <h4 className="font-medium text-gray-900 mb-2">Rotor Wing</h4>
+                                                        {selectedPayor.rotorWing?.phone && (
+                                                            <p className="text-sm text-gray-600">Phone: <span className="font-mono text-blue-600">{selectedPayor.rotorWing.phone}</span></p>
+                                                        )}
+                                                        {selectedPayor.rotorWing?.preauth_required && (
+                                                            <p className="text-sm text-red-600 font-medium">Pre-authorization required</p>
+                                                        )}
+                                                        {selectedPayor.rotorWing?.notes && (
+                                                            <p className="text-sm text-gray-600 mt-1">{selectedPayor.rotorWing.notes}</p>
+                                                        )}
+                                                        {!selectedPayor.rotorWing?.phone && !selectedPayor.rotorWing?.notes && (
+                                                            <p className="text-sm text-gray-500">No details available</p>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Fixed Wing */}
+                                                    <div className="bg-gray-50 p-4 rounded-md">
+                                                        <h4 className="font-medium text-gray-900 mb-2">Fixed Wing</h4>
+                                                        {selectedPayor.fixedWing?.phone && (
+                                                            <p className="text-sm text-gray-600">Phone: <span className="font-mono text-blue-600">{selectedPayor.fixedWing.phone}</span></p>
+                                                        )}
+                                                        {selectedPayor.fixedWing?.preauth_required && (
+                                                            <p className="text-sm text-red-600 font-medium">Pre-authorization required</p>
+                                                        )}
+                                                        {selectedPayor.fixedWing?.notes && (
+                                                            <p className="text-sm text-gray-600 mt-1">{selectedPayor.fixedWing.notes}</p>
+                                                        )}
+                                                        {!selectedPayor.fixedWing?.phone && !selectedPayor.fixedWing?.notes && (
+                                                            <p className="text-sm text-gray-500">No details available</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Reference Links */}
+                                            {selectedPayor.referenceLinks && selectedPayor.referenceLinks.length > 0 && (
+                                                <div>
+                                                    <h3 className="font-medium text-gray-900 mb-3">Reference Links</h3>
+                                                    <div className="space-y-3">
+                                                        {selectedPayor.referenceLinks.map((link, index) => (
+                                                            <div key={index} className="bg-gray-50 p-4 rounded-md">
+                                                                <a 
+                                                                    href={link.url} 
+                                                                    target="_blank" 
+                                                                    rel="noopener noreferrer"
+                                                                    className="font-medium text-blue-600 hover:text-blue-800 underline"
+                                                                >
+                                                                    {link.title || 'Document Link'}
+                                                                </a>
+                                                                {link.description && (
+                                                                    <p className="text-sm text-gray-600 mt-1">{link.description}</p>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {/* Notes */}
                                             {selectedPayor.notes && (
                                                 <div>
-                                                    <h3 className="font-medium text-gray-900 mb-3">Notes</h3>
+                                                    <h3 className="font-medium text-gray-900 mb-3">Additional Notes</h3>
                                                     <div className="bg-gray-50 p-4 rounded-md">
                                                         <p className="text-gray-700 whitespace-pre-wrap">{selectedPayor.notes}</p>
                                                     </div>
                                                 </div>
                                             )}
-
-                                            {/* Service Categories Placeholder */}
-                                            <div>
-                                                <h3 className="font-medium text-gray-900 mb-3">Service Categories</h3>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div className="bg-gray-50 p-4 rounded-md">
-                                                        <h4 className="font-medium text-gray-900 mb-1">Emergency Ground</h4>
-                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
-                                                    </div>
-                                                    <div className="bg-gray-50 p-4 rounded-md">
-                                                        <h4 className="font-medium text-gray-900 mb-1">Non-Emergency Ground</h4>
-                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
-                                                    </div>
-                                                    <div className="bg-gray-50 p-4 rounded-md">
-                                                        <h4 className="font-medium text-gray-900 mb-1">Rotor Wing</h4>
-                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
-                                                    </div>
-                                                    <div className="bg-gray-50 p-4 rounded-md">
-                                                        <h4 className="font-medium text-gray-900 mb-1">Fixed Wing</h4>
-                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
-                                                    </div>
-                                                </div>
-                                            </div>
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-                                        <Icon type="building" className="mx-auto mb-4 text-gray-400 text-4xl" />
-                                        <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Payor</h3>
-                                        <p className="text-gray-500">Choose an insurance payor from the list to view details</p>
+                                        <p className="text-gray-500">Select a payor from the list to view details</p>
                                     </div>
                                 )}
                             </div>
                         </div>
                     )}
-                </main>
 
-                {/* Password Modal */}
-                <PasswordModal
-                    isOpen={showAdminPasswordModal}
-                    onClose={() => {
-                        setShowAdminPasswordModal(false);
-                        setAdminAction('');
-                    }}
-                    onSubmit={handleAdminPasswordSubmit}
-                    title="Admin Authentication"
-                    message="Please enter the admin password to continue."
-                />
-
-                {/* Admin Form Modal - Embedded forms to avoid component issues */}
-                {showAdmin && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4 overflow-y-auto">
-                        <div className="max-h-[90vh] overflow-y-auto w-full">
-                            {activeTab === 'entities' ? (
-                                // Entity Admin Form
-                                <div className="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto">
-                                    <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-3">
-                                        {entityToEdit ? 'Edit Entity' : 'Add New Entity'}
-                                    </h2>
-                                    <form onSubmit={(e) => {
-                                        e.preventDefault();
-                                        const formData = new FormData(e.target);
-                                        const entityData = {
-                                            name: formData.get('name'),
-                                            type: formData.get('type'),
-                                            address: formData.get('address'),
-                                            phone_numbers: [{ 
-                                                label: formData.get('phone_label') || 'Main', 
-                                                number: formData.get('phone_number') || '', 
-                                                description: formData.get('phone_description') || '' 
-                                            }],
-                                            contracted_service: formData.get('contracted_service') || '',
-                                            contractual_obligations: [],
-                                            er_entrance: formData.get('er_entrance') || '',
-                                            flight_program: {
-                                                isOneCall: formData.get('is_one_call') === 'on',
-                                                participating: formData.get('participating') === 'on',
-                                                flightByGround: formData.get('flight_by_ground') === 'on',
-                                                notes: formData.get('flight_notes') || '',
-                                                landingZones: []
-                                            },
-                                            backup_services: {
-                                                airServices: formData.get('air_services') ? [{ name: formData.get('air_services'), phone: '', description: '' }] : [],
-                                                groundServices: formData.get('ground_services') ? [{ name: formData.get('ground_services'), phone: '', description: '' }] : [],
-                                                noUnitsContact: formData.get('no_units_contact') || '',
-                                                mutualAid: formData.get('mutual_aid') || ''
-                                            },
-                                            county_info: {
-                                                county: formData.get('county') || '',
-                                                sheriffAgencies: formData.get('sheriff_agencies') ? [{ name: formData.get('sheriff_agencies'), phone: '', description: '' }] : [],
-                                                fireAgencies: formData.get('fire_agencies') ? [{ name: formData.get('fire_agencies'), phone: '', description: '' }] : [],
-                                                emsAgencies: formData.get('ems_agencies') ? [{ name: formData.get('ems_agencies'), phone: '', description: '' }] : []
-                                            },
-                                            notes: formData.get('notes') || '',
-                                            id: entityToEdit?.id
-                                        };
-                                        handleSaveNewEntity(entityData);
-                                    }} className="space-y-6">
-                                        {/* Basic Information */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Basic Information</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                                    <input
-                                                        type="text"
-                                                        name="name"
-                                                        defaultValue={entityToEdit?.name || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        required
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                                                    <select
-                                                        name="type"
-                                                        defaultValue={entityToEdit?.type || 'hospital'}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    >
-                                                        <option value="hospital">Hospital</option>
-                                                        <option value="clinic">Clinic</option>
-                                                        <option value="fire_station">Fire Station</option>
-                                                        <option value="police_station">Police Station</option>
-                                                        <option value="ems_station">EMS Station</option>
-                                                        <option value="911_center">911 Center</option>
-                                                        <option value="other">Other</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div className="mt-4">
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                                                <input
-                                                    type="text"
-                                                    name="address"
-                                                    defaultValue={entityToEdit?.address || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Phone Number */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Primary Phone</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
-                                                    <input
-                                                        type="text"
-                                                        name="phone_label"
-                                                        defaultValue={entityToEdit?.phoneNumbers?.[0]?.label || 'Main'}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="e.g., Main, Emergency"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Number</label>
-                                                    <input
-                                                        type="text"
-                                                        name="phone_number"
-                                                        defaultValue={entityToEdit?.phoneNumbers?.[0]?.number || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="Phone number"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                                    <input
-                                                        type="text"
-                                                        name="phone_description"
-                                                        defaultValue={entityToEdit?.phoneNumbers?.[0]?.description || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="e.g., Front Desk, ER"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Notes */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Notes</h3>
-                                            <textarea
-                                                name="notes"
-                                                defaultValue={entityToEdit?.notes || ''}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                placeholder="Any additional information"
-                                                rows="4"
-                                            ></textarea>
-                                        </div>
-
-                                        {/* Form Actions */}
-                                        <div className="flex justify-end space-x-3 pt-4 border-t">
-                                            <button
-                                                type="button"
-                                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
-                                                onClick={() => {
-                                                    setShowAdmin(false);
-                                                    setEntityToEdit(null);
-                                                }}
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                                            >
-                                                {entityToEdit ? 'Update Entity' : 'Save Entity'}
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            ) : (
-                                // Insurance Payor Admin Form
-                                <div className="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto">
-                                    <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-3">
-                                        {payorToEdit ? 'Edit Insurance Payor' : 'Add New Insurance Payor'}
-                                    </h2>
-                                    <form onSubmit={(e) => {
-                                        e.preventDefault();
-                                        const formData = new FormData(e.target);
-                                        const payorData = {
-                                            name: formData.get('name'),
-                                            type: formData.get('type'),
-                                            website: formData.get('website'),
-                                            phone_numbers: [{ 
-                                                label: formData.get('phone_label') || 'Main', 
-                                                number: formData.get('phone_number') || '', 
-                                                description: formData.get('phone_description') || '' 
-                                            }],
-                                            emergency_ground: {
-                                                phone: formData.get('emergency_phone') || '',
-                                                preauth_required: formData.get('emergency_preauth') === 'on',
-                                                preauth_phone: formData.get('emergency_preauth_phone') || '',
-                                                preauth_website: formData.get('emergency_preauth_website') || '',
-                                                notes: formData.get('emergency_notes') || ''
-                                            },
-                                            non_emergency_ground: {
-                                                phone: formData.get('nonemergency_phone') || '',
-                                                preauth_required: formData.get('nonemergency_preauth') === 'on',
-                                                preauth_phone: formData.get('nonemergency_preauth_phone') || '',
-                                                preauth_website: formData.get('nonemergency_preauth_website') || '',
-                                                notes: formData.get('nonemergency_notes') || ''
-                                            },
-                                            rotor_wing: {
-                                                phone: formData.get('rotor_phone') || '',
-                                                preauth_required: formData.get('rotor_preauth') === 'on',
-                                                preauth_phone: formData.get('rotor_preauth_phone') || '',
-                                                preauth_website: formData.get('rotor_preauth_website') || '',
-                                                notes: formData.get('rotor_notes') || ''
-                                            },
-                                            fixed_wing: {
-                                                phone: formData.get('fixed_phone') || '',
-                                                preauth_required: formData.get('fixed_preauth') === 'on',
-                                                preauth_phone: formData.get('fixed_preauth_phone') || '',
-                                                preauth_website: formData.get('fixed_preauth_website') || '',
-                                                notes: formData.get('fixed_notes') || ''
-                                            },
-                                            reference_links: [],
-                                            notes: formData.get('notes') || '',
-                                            id: payorToEdit?.id
-                                        };
-                                        handleSaveNewPayor(payorData);
-                                    }} className="space-y-6">
-                                        {/* Basic Information */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Basic Information</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Payor Name</label>
-                                                    <input
-                                                        type="text"
-                                                        name="name"
-                                                        defaultValue={payorToEdit?.name || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        required
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                                                    <select
-                                                        name="type"
-                                                        defaultValue={payorToEdit?.type || 'commercial'}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    >
-                                                        <option value="commercial">Commercial</option>
-                                                        <option value="medicare">Medicare</option>
-                                                        <option value="medicaid">Medicaid</option>
-                                                        <option value="workers_comp">Workers Compensation</option>
-                                                        <option value="auto_insurance">Auto Insurance</option>
-                                                        <option value="government">Government</option>
-                                                        <option value="other">Other</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div className="mt-4">
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
-                                                <input
-                                                    type="url"
-                                                    name="website"
-                                                    defaultValue={payorToEdit?.website || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="https://..."
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Primary Phone */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Primary Contact</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
-                                                    <input
-                                                        type="text"
-                                                        name="phone_label"
-                                                        defaultValue={payorToEdit?.phoneNumbers?.[0]?.label || 'Main'}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="e.g., Main, Claims"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Number</label>
-                                                    <input
-                                                        type="text"
-                                                        name="phone_number"
-                                                        defaultValue={payorToEdit?.phoneNumbers?.[0]?.number || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="Phone number"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                                    <input
-                                                        type="text"
-                                                        name="phone_description"
-                                                        defaultValue={payorToEdit?.phoneNumbers?.[0]?.description || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="Department or purpose"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Emergency Ground Transport */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Emergency Ground Transport</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="emergency_phone"
-                                                        defaultValue={payorToEdit?.emergencyGround?.phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="emergency_preauth"
-                                                        defaultChecked={payorToEdit?.emergencyGround?.preauth_required || false}
-                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                    />
-                                                    <label className="ml-2 text-sm text-gray-700">Pre-authorization Required</label>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="emergency_preauth_phone"
-                                                        defaultValue={payorToEdit?.emergencyGround?.preauth_phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Website</label>
-                                                    <input
-                                                        type="url"
-                                                        name="emergency_preauth_website"
-                                                        defaultValue={payorToEdit?.emergencyGround?.preauth_website || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                                <textarea
-                                                    name="emergency_notes"
-                                                    defaultValue={payorToEdit?.emergencyGround?.notes || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    rows="2"
-                                                ></textarea>
-                                            </div>
-                                        </div>
-
-                                        {/* Non-Emergency Ground Transport */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Non-Emergency Ground Transport</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="nonemergency_phone"
-                                                        defaultValue={payorToEdit?.nonEmergencyGround?.phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="nonemergency_preauth"
-                                                        defaultChecked={payorToEdit?.nonEmergencyGround?.preauth_required || false}
-                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                    />
-                                                    <label className="ml-2 text-sm text-gray-700">Pre-authorization Required</label>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="nonemergency_preauth_phone"
-                                                        defaultValue={payorToEdit?.nonEmergencyGround?.preauth_phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Website</label>
-                                                    <input
-                                                        type="url"
-                                                        name="nonemergency_preauth_website"
-                                                        defaultValue={payorToEdit?.nonEmergencyGround?.preauth_website || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                                <textarea
-                                                    name="nonemergency_notes"
-                                                    defaultValue={payorToEdit?.nonEmergencyGround?.notes || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    rows="2"
-                                                ></textarea>
-                                            </div>
-                                        </div>
-
-                                        {/* Rotor Wing (Helicopter) */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Rotor Wing (Helicopter)</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="rotor_phone"
-                                                        defaultValue={payorToEdit?.rotorWing?.phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="rotor_preauth"
-                                                        defaultChecked={payorToEdit?.rotorWing?.preauth_required || false}
-                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                    />
-                                                    <label className="ml-2 text-sm text-gray-700">Pre-authorization Required</label>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="rotor_preauth_phone"
-                                                        defaultValue={payorToEdit?.rotorWing?.preauth_phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Website</label>
-                                                    <input
-                                                        type="url"
-                                                        name="rotor_preauth_website"
-                                                        defaultValue={payorToEdit?.rotorWing?.preauth_website || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                                <textarea
-                                                    name="rotor_notes"
-                                                    defaultValue={payorToEdit?.rotorWing?.notes || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    rows="2"
-                                                ></textarea>
-                                            </div>
-                                        </div>
-
-                                        {/* Fixed Wing (Airplane) */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Fixed Wing (Airplane)</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="fixed_phone"
-                                                        defaultValue={payorToEdit?.fixedWing?.phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="fixed_preauth"
-                                                        defaultChecked={payorToEdit?.fixedWing?.preauth_required || false}
-                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                    />
-                                                    <label className="ml-2 text-sm text-gray-700">Pre-authorization Required</label>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="fixed_preauth_phone"
-                                                        defaultValue={payorToEdit?.fixedWing?.preauth_phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Website</label>
-                                                    <input
-                                                        type="url"
-                                                        name="fixed_preauth_website"
-                                                        defaultValue={payorToEdit?.fixedWing?.preauth_website || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                                <textarea
-                                                    name="fixed_notes"
-                                                    defaultValue={payorToEdit?.fixedWing?.notes || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    rows="2"
-                                                ></textarea>
-                                            </div>
-                                        </div>
-
-                                        {/* General Notes */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">General Notes</h3>
-                                            <textarea
-                                                name="notes"
-                                                defaultValue={payorToEdit?.notes || ''}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                placeholder="Any additional information about this payor"
-                                                rows="4"
-                                            ></textarea>
-                                        </div>
-
-                                        {/* Form Actions */}
-                                        <div className="flex justify-end space-x-3 pt-4 border-t">
-                                            <button
-                                                type="button"
-                                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
-                                                onClick={() => {
-                                                    setShowAdmin(false);
-                                                    setPayorToEdit(null);
-                                                }}
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                                            >
-                                                {payorToEdit ? 'Update Payor' : 'Save Payor'}
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            )}
+                    {/* Admin Modal */}
+                    {showAdmin && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div className="w-full max-w-4xl max-h-[90vh] overflow-auto">
+                                {activeTab === 'entities' ? (
+                                    <EntityForm 
+                                        entity={entityToEdit} 
+                                        onSave={handleSaveNewEntity} 
+                                        onCancel={() => {
+                                            setShowAdmin(false);
+                                            setEntityToEdit(null);
+                                        }} 
+                                    />
+                                ) : (
+                                    <PayorForm 
+                                        payor={payorToEdit} 
+                                        onSave={handleSaveNewPayor} 
+                                        onCancel={() => {
+                                            setShowAdmin(false);
+                                            setPayorToEdit(null);
+                                        }} 
+                                    />
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
+
+                    {/* Admin Password Modal */}
+                    <PasswordModal 
+                        isOpen={showAdminPasswordModal}
+                        onClose={() => setShowAdminPasswordModal(false)}
+                        onSubmit={handleAdminPasswordSubmit}
+                        title="Admin Access Required"
+                        message="Please enter the admin password to access management features."
+                    />
+                </main>
             </div>
         );
     };
