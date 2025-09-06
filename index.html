@@ -1425,38 +1425,115 @@
         // If not authenticated to the portal, show login screen
         if (!isPortalAuthenticated) {
             return (
-                <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
-                    <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
-                        <div className="text-center mb-8">
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">Emergency Services Portal</h1>
-                            <p className="text-gray-600">Please enter your password to access the portal</p>
+                <div style={{
+                    minHeight: '100vh',
+                    background: 'linear-gradient(135deg, #1a365d 0%, #2563eb 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '1rem'
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        padding: '2rem',
+                        borderRadius: '0.5rem',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        maxWidth: '28rem',
+                        width: '100%'
+                    }}>
+                        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                            <h1 style={{
+                                fontSize: '1.875rem',
+                                fontWeight: 'bold',
+                                color: '#111827',
+                                marginBottom: '0.5rem'
+                            }}>
+                                Emergency Services Portal
+                            </h1>
+                            <p style={{ color: '#6b7280' }}>
+                                Please enter your password to access the portal
+                            </p>
                         </div>
                         <form onSubmit={(e) => {
                             e.preventDefault();
                             handlePortalPasswordSubmit(document.getElementById('portalPassword').value);
                         }}>
-                            <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{
+                                    display: 'block',
+                                    fontSize: '0.875rem',
+                                    fontWeight: '500',
+                                    color: '#374151',
+                                    marginBottom: '0.5rem'
+                                }}>
+                                    Password
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <div style={{
+                                        position: 'absolute',
+                                        inset: '0 auto 0 0',
+                                        paddingLeft: '0.75rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        pointerEvents: 'none'
+                                    }}>
                                         <Icon type="lock" />
                                     </div>
                                     <input
                                         type="password"
                                         id="portalPassword"
-                                        className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        style={{
+                                            width: '100%',
+                                            paddingLeft: '2.5rem',
+                                            paddingRight: '0.75rem',
+                                            paddingTop: '0.75rem',
+                                            paddingBottom: '0.75rem',
+                                            border: '1px solid #d1d5db',
+                                            borderRadius: '0.375rem',
+                                            fontSize: '1rem',
+                                            outline: 'none'
+                                        }}
+                                        onFocus={(e) => {
+                                            e.target.style.borderColor = '#3b82f6';
+                                            e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                                        }}
+                                        onBlur={(e) => {
+                                            e.target.style.borderColor = '#d1d5db';
+                                            e.target.style.boxShadow = 'none';
+                                        }}
                                         required
                                     />
                                 </div>
                             </div>
                             <button
                                 type="submit"
-                                className="w-full px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem 1rem',
+                                    backgroundColor: '#2563eb',
+                                    color: 'white',
+                                    borderRadius: '0.375rem',
+                                    border: 'none',
+                                    fontWeight: '500',
+                                    cursor: 'pointer',
+                                    transition: 'background-color 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.target.style.backgroundColor = '#1d4ed8';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.target.style.backgroundColor = '#2563eb';
+                                }}
                             >
                                 Access Portal
                             </button>
                         </form>
-                        <div className="mt-6 text-center text-sm text-gray-500">
+                        <div style={{
+                            marginTop: '1.5rem',
+                            textAlign: 'center',
+                            fontSize: '0.875rem',
+                            color: '#6b7280'
+                        }}>
                             <p>© 2025 Emergency Services Portal. All rights reserved.</p>
                         </div>
                     </div>
