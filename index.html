@@ -15,20 +15,17 @@
         .icon-phone { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z'/%3E%3C/svg%3E") center/contain no-repeat; }
         .icon-edit { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'/%3E%3C/svg%3E") center/contain no-repeat; }
         .icon-trash { display: inline-block; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'/%3E%3C/svg%3E") center/contain no-repeat; }
-        .gradient-bg {
-            background: linear-gradient(135deg, #1a365d 0%, #2563eb 100%);
-        }
     </style>
 </head>
 <body class="bg-gray-50">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useCallback, useMemo } = React;
+        const { useState, useEffect, useCallback } = React;
 
         // Use environment variables or config file in production
         const supabaseUrl = 'https://cpddhpwzgkivzfkqlbop.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwZGRocHd6Z2tpdnpma3FsYm9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NjE0MzEsImV4cCI6MjA3MjQzNzQzMX0.DQPbGH8fCnCeg208XPlJStwCltpLc77DrRKUlDJE1V0';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwZGRocHd6Z2tpenpma3FsYm9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NjE0MzEsImV4cCI6MjA3MjQzNzQzMX0.DQPbGH8fCnCeg208XPlJStwCltpLc77DrRKUlDJE1V0';
         const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         // Enhanced Customer Form with ALL fields
@@ -39,7 +36,7 @@
                 address: '',
                 phone_numbers: [{ label: 'Main', number: '', description: '' }],
                 contracted_service: '',
-                contractual_obligations: [''],
+                contractual_obligations: [],
                 er_entrance: '',
                 flight_program: {
                     isOneCall: false,
@@ -49,16 +46,16 @@
                     landingZones: []
                 },
                 backup_services: {
-                    airServices: [''],
-                    groundServices: [''],
+                    airServices: [],
+                    groundServices: [],
                     noUnitsContact: '',
                     mutualAid: ''
                 },
                 county_info: {
                     county: '',
-                    sheriffAgencies: [''],
-                    fireAgencies: [''],
-                    emsAgencies: ['']
+                    sheriffAgencies: [],
+                    fireAgencies: [],
+                    emsAgencies: []
                 },
                 notes: '',
                 last_contact: ''
@@ -70,31 +67,31 @@
                         name: entityToEdit.name || '',
                         type: entityToEdit.type || 'hospital',
                         address: entityToEdit.address || '',
-                        phone_numbers: entityToEdit.phoneNumbers?.length > 0 ? entityToEdit.phoneNumbers : [{ label: 'Main', number: '', description: '' }],
-                        contracted_service: entityToEdit.contractedService || '',
-                        contractual_obligations: entityToEdit.contractualObligations || [''],
-                        er_entrance: entityToEdit.erEntrance || '',
-                        flight_program: entityToEdit.flightProgram || {
+                        phone_numbers: entityToEdit.phone_numbers?.length > 0 ? entityToEdit.phone_numbers : [{ label: 'Main', number: '', description: '' }],
+                        contracted_service: entityToEdit.contracted_service || '',
+                        contractual_obligations: entityToEdit.contractual_obligations || [],
+                        er_entrance: entityToEdit.er_entrance || '',
+                        flight_program: entityToEdit.flight_program || {
                             isOneCall: false,
                             participating: false,
                             flightByGround: false,
                             notes: '',
                             landingZones: []
                         },
-                        backup_services: entityToEdit.backupServices || {
-                            airServices: [''],
-                            groundServices: [''],
+                        backup_services: entityToEdit.backup_services || {
+                            airServices: [],
+                            groundServices: [],
                             noUnitsContact: '',
                             mutualAid: ''
                         },
-                        county_info: entityToEdit.countyInfo || {
+                        county_info: entityToEdit.county_info || {
                             county: '',
-                            sheriffAgencies: [''],
-                            fireAgencies: [''],
-                            emsAgencies: ['']
+                            sheriffAgencies: [],
+                            fireAgencies: [],
+                            emsAgencies: []
                         },
                         notes: entityToEdit.notes || '',
-                        last_contact: entityToEdit.lastContact || '',
+                        last_contact: entityToEdit.last_contact || '',
                         id: entityToEdit.id
                     });
                 }
@@ -102,36 +99,6 @@
 
             const updateField = (field, value) => {
                 setFormData(prev => ({ ...prev, [field]: value }));
-            };
-
-            const updateNestedField = (parent, field, value) => {
-                setFormData(prev => ({
-                    ...prev,
-                    [parent]: { ...prev[parent], [field]: value }
-                }));
-            };
-
-            const addArrayItem = (field) => {
-                setFormData(prev => ({
-                    ...prev,
-                    [field]: [...prev[field], '']
-                }));
-            };
-
-            const updateArrayItem = (field, index, value) => {
-                setFormData(prev => {
-                    const updated = [...prev[field]];
-                    updated[index] = value;
-                    return { ...prev, [field]: updated };
-                });
-            };
-
-            const removeArrayItem = (field, index) => {
-                setFormData(prev => {
-                    const updated = [...prev[field]];
-                    updated.splice(index, 1);
-                    return { ...prev, [field]: updated };
-                });
             };
 
             const handleSubmit = () => {
@@ -143,7 +110,7 @@
             };
 
             return (
-                <div className="bg-white p-6 rounded-lg shadow-lg max-h-[80vh] overflow-y-auto">
+                <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl max-h-[90vh] overflow-y-auto">
                     <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-3">
                         {entityToEdit ? 'Edit Customer' : 'Add New Customer'}
                     </h2>
@@ -282,6 +249,55 @@
                             />
                         </div>
 
+                        {/* Contractual Obligations */}
+                        <div className="bg-gray-50 p-4 rounded-md">
+                            <h3 className="font-medium text-gray-900 mb-3">Contractual Obligations</h3>
+                            <div className="space-y-2">
+                                {formData.contractual_obligations.map((obligation, index) => (
+                                    <div key={index} className="flex items-center">
+                                        <input
+                                            type="text"
+                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                                            value={obligation}
+                                            onChange={(e) => {
+                                                const updated = [...formData.contractual_obligations];
+                                                updated[index] = e.target.value;
+                                                updateField('contractual_obligations', updated);
+                                            }}
+                                            placeholder="Enter obligation"
+                                        />
+                                        <button
+                                            className="ml-2 px-2 py-1 bg-red-100 text-red-600 rounded"
+                                            onClick={() => {
+                                                const updated = formData.contractual_obligations.filter((_, i) => i !== index);
+                                                updateField('contractual_obligations', updated);
+                                            }}
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                ))}
+                                <button
+                                    className="px-3 py-1 bg-green-100 text-green-600 rounded"
+                                    onClick={() => updateField('contractual_obligations', [...formData.contractual_obligations, ''])}
+                                >
+                                    Add Obligation
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* ER Entrance */}
+                        <div className="bg-gray-50 p-4 rounded-md">
+                            <h3 className="font-medium text-gray-900 mb-3">ER Entrance</h3>
+                            <input
+                                type="text"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                value={formData.er_entrance}
+                                onChange={(e) => updateField('er_entrance', e.target.value)}
+                                placeholder="ER entrance details"
+                            />
+                        </div>
+
                         {/* Notes */}
                         <div className="bg-gray-50 p-4 rounded-md">
                             <h3 className="font-medium text-gray-900 mb-3">Additional Notes</h3>
@@ -364,26 +380,75 @@
                     </div>
 
                     <div className="p-6">
-                        {/* Content sections based on activeSection */}
-                        {/* This will display ALL data from the database */}
-                        <div className="space-y-4">
-                            {activeSection === 'overview' && (
-                                <div>
-                                    <h3 className="font-semibold mb-3">Complete Customer Data</h3>
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                        <div><strong>Name:</strong> {entity.name}</div>
-                                        <div><strong>Type:</strong> {entity.type}</div>
-                                        <div><strong>Address:</strong> {entity.address || 'Not provided'}</div>
-                                        <div><strong>Contracted Service:</strong> {entity.contractedService || 'Not provided'}</div>
+                        {activeSection === 'overview' && (
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <h3 className="font-semibold mb-2">Basic Information</h3>
+                                        <div className="space-y-2 text-sm">
+                                            <div><strong>Name:</strong> {entity.name}</div>
+                                            <div><strong>Type:</strong> {entity.type}</div>
+                                            <div><strong>Address:</strong> {entity.address || 'Not provided'}</div>
+                                            <div><strong>Contracted Service:</strong> {entity.contracted_service || 'Not provided'}</div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold mb-2">Contact Information</h3>
+                                        {entity.phone_numbers?.length > 0 ? (
+                                            <div className="space-y-1">
+                                                {entity.phone_numbers.map((phone, index) => (
+                                                    <div key={index}>
+                                                        <strong>{phone.label}:</strong> {phone.number}
+                                                        {phone.description && <span className="text-gray-500"> ({phone.description})</span>}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-gray-500">No phone numbers provided</p>
+                                        )}
                                     </div>
                                 </div>
-                            )}
-                            
-                            {/* Add other sections for complete data display */}
-                        </div>
+                            </div>
+                        )}
+
+                        {activeSection === 'services' && (
+                            <div className="space-y-4">
+                                <h3 className="font-semibold mb-3">Services & Contracts</h3>
+                                <div>
+                                    <h4 className="font-medium mb-2">Contractual Obligations</h4>
+                                    {entity.contractual_obligations?.length > 0 ? (
+                                        <ul className="list-disc list-inside space-y-1">
+                                            {entity.contractual_obligations.map((obligation, index) => (
+                                                <li key={index}>{obligation}</li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <p className="text-gray-500">No contractual obligations recorded</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === 'notes' && (
+                            <div className="space-y-4">
+                                <h3 className="font-semibold mb-3">Notes & Documentation</h3>
+                                <div>
+                                    <h4 className="font-medium mb-2">General Notes</h4>
+                                    <p className="text-gray-900 whitespace-pre-wrap">{entity.notes || 'No notes provided'}</p>
+                                </div>
+                                <div>
+                                    <h4 className="font-medium mb-2">Last Contact</h4>
+                                    <p className="text-gray-900">{entity.last_contact || 'Not recorded'}</p>
+                                </div>
+                                <div>
+                                    <h4 className="font-medium mb-2">ER Entrance</h4>
+                                    <p className="text-gray-900">{entity.er_entrance || 'Not specified'}</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    <div className="border-t px-6 py-4 flex justify-between">
+                    <div className="border-t px-6 py-4 flex justify-between items-center">
                         <button
                             onClick={onEdit}
                             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -396,6 +461,139 @@
                         >
                             Close
                         </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // Insurance Payor Form
+        const InsurancePayorForm = ({ onSave, onCancel, payor = null }) => {
+            const [formData, setFormData] = useState({
+                name: '',
+                short_code: '',
+                main_phone: '',
+                main_website: '',
+                requires_preauth: false,
+                preauth_phone: '',
+                general_notes: ''
+            });
+
+            useEffect(() => {
+                if (payor) {
+                    setFormData({
+                        name: payor.name || '',
+                        short_code: payor.short_code || '',
+                        main_phone: payor.main_phone || '',
+                        main_website: payor.main_website || '',
+                        requires_preauth: payor.requires_preauth || false,
+                        preauth_phone: payor.preauth_phone || '',
+                        general_notes: payor.general_notes || '',
+                        id: payor.id
+                    });
+                }
+            }, [payor]);
+
+            const handleSubmit = () => {
+                if (!formData.name.trim()) {
+                    alert('Payor name is required');
+                    return;
+                }
+                onSave(formData);
+            };
+
+            return (
+                <div className="bg-white p-6 rounded-lg max-w-md">
+                    <h2 className="text-xl font-bold mb-4">{payor ? 'Edit Insurance Payor' : 'Add New Insurance Payor'}</h2>
+                    
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Payor Name *</label>
+                            <input
+                                type="text"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                value={formData.name}
+                                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                required
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Short Code</label>
+                            <input
+                                type="text"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                value={formData.short_code}
+                                onChange={(e) => setFormData({...formData, short_code: e.target.value})}
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Main Phone</label>
+                            <input
+                                type="text"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                value={formData.main_phone}
+                                onChange={(e) => setFormData({...formData, main_phone: e.target.value})}
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Website</label>
+                            <input
+                                type="url"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                value={formData.main_website}
+                                onChange={(e) => setFormData({...formData, main_website: e.target.value})}
+                            />
+                        </div>
+                        
+                        <div className="flex items-center">
+                            <input
+                                type="checkbox"
+                                id="requires_preauth"
+                                checked={formData.requires_preauth}
+                                onChange={(e) => setFormData({...formData, requires_preauth: e.target.checked})}
+                                className="mr-2"
+                            />
+                            <label htmlFor="requires_preauth" className="text-sm">Requires Pre-Authorization</label>
+                        </div>
+                        
+                        {formData.requires_preauth && (
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Pre-Auth Phone</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    value={formData.preauth_phone}
+                                    onChange={(e) => setFormData({...formData, preauth_phone: e.target.value})}
+                                />
+                            </div>
+                        )}
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-1">General Notes</label>
+                            <textarea
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                value={formData.general_notes}
+                                onChange={(e) => setFormData({...formData, general_notes: e.target.value})}
+                                rows="3"
+                            />
+                        </div>
+                        
+                        <div className="flex space-x-3">
+                            <button
+                                onClick={handleSubmit}
+                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                            >
+                                Save
+                            </button>
+                            <button
+                                onClick={onCancel}
+                                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
             );
@@ -573,7 +771,7 @@
             // Authentication Portal
             if (!isPortalAuthenticated) {
                 return (
-                    <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
+                    <div className="min-h-screen bg-gradient-to-r from-blue-600 to-blue-800 flex items-center justify-center p-4">
                         <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
                             <div className="text-center mb-8">
                                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Dispatch Portal</h1>
@@ -653,7 +851,7 @@
                         {activeTab === 'customers' ? (
                             <div>
                                 <div className="mb-6 flex justify-between items-center">
-                                    <h2 className="text-xl font-semibold">Customer Management</h2>
+                                    <h2 className="text-xl font-semibold">Customer Management ({entities.length})</h2>
                                     <button
                                         onClick={() => setShowCustomerForm(true)}
                                         className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
@@ -664,7 +862,6 @@
                                 
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                     <div className="lg:col-span-1">
-                                        <h3 className="font-medium mb-4">Customer List ({entities.length})</h3>
                                         <div className="space-y-2 max-h-96 overflow-y-auto">
                                             {entities.map(entity => (
                                                 <div
@@ -723,7 +920,7 @@
                         ) : (
                             <div>
                                 <div className="mb-6 flex justify-between items-center">
-                                    <h2 className="text-xl font-semibold">Insurance Management</h2>
+                                    <h2 className="text-xl font-semibold">Insurance Management ({insurancePayors.length})</h2>
                                     <button
                                         onClick={() => setShowAddPayorModal(true)}
                                         className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
@@ -734,7 +931,6 @@
                                 
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                     <div className="lg:col-span-1">
-                                        <h3 className="font-medium mb-4">Insurance Payors ({insurancePayors.length})</h3>
                                         <div className="space-y-2 max-h-96 overflow-y-auto">
                                             {insurancePayors.map(payor => (
                                                 <div
@@ -798,14 +994,29 @@
 
                     {/* Forms */}
                     {showCustomerForm && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                            <div className="bg-white p-6 rounded-lg max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-y-auto">
                                 <CustomerAdminForm
                                     entityToEdit={editingEntity}
                                     onSave={handleSaveCustomer}
                                     onCancel={() => {
                                         setShowCustomerForm(false);
                                         setEditingEntity(null);
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {showAddPayorModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-lg">
+                                <InsurancePayorForm
+                                    payor={editingPayor}
+                                    onSave={handleSaveInsurance}
+                                    onCancel={() => {
+                                        setShowAddPayorModal(false);
+                                        setEditingPayor(null);
                                     }}
                                 />
                             </div>
