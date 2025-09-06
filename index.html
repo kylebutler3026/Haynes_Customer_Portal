@@ -1121,14 +1121,21 @@
                                     entityToEdit={entityToEdit}
                                 />
                             ) : (
-                                <PayorForm 
-                                    onSave={handleSaveNewPayor}
-                                    onCancel={() => {
-                                        setShowAdmin(false);
-                                        setPayorToEdit(null);
-                                    }}
-                                    payorToEdit={payorToEdit}
-                                />
+                                // Temporary placeholder for insurance payor form
+                                <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-auto">
+                                    <h2 className="text-xl font-bold mb-4">Add Insurance Payor</h2>
+                                    <p className="mb-4">Insurance payor management form is being prepared.</p>
+                                    <p className="text-sm text-gray-600 mb-4">For now, you can view and browse existing payors. Add/edit functionality coming soon.</p>
+                                    <button
+                                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+                                        onClick={() => {
+                                            setShowAdmin(false);
+                                            setPayorToEdit(null);
+                                        }}
+                                    >
+                                        Close
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>
