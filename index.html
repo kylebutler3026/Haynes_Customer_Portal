@@ -953,1073 +953,143 @@
                             </div>
                         )
                     ) : (
-                        // Insurance Portal Tab - Simple version to avoid errors
-                        <div className="text-center py-20">
-                            <h2 className="text-2xl font-bold text-gray-900 mb-4">Insurance Portal</h2>
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-2xl mx-auto">
-                                <Icon type="building" className="mx-auto mb-4 text-blue-600 text-2xl" />
-                                <h3 className="text-lg font-medium text-blue-800 mb-2">Portal Active</h3>
-                                <p className="text-blue-700 mb-4">
-                                    Found {payors ? payors.length : 0} insurance payors in database.
-                                </p>
-                                
-                                {/* Simple payor list */}
-                                {payors && payors.length > 0 && (
-                                    <div className="mt-6">
-                                        <h4 className="font-medium mb-3">Current Payors:</h4>
-                                        <div className="space-y-2">
-                                            {payors.map((payor, index) => (
-                                                <div key={index} className="bg-white p-3 rounded-md shadow-sm text-left">
+                        // Insurance Portal Tab - Add clickable selection
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Left Column: Simple Payor List */}
+                            <div className="md:col-span-1">
+                                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                                    <div className="bg-gray-50 px-4 py-3 border-b">
+                                        <h2 className="text-lg font-medium text-gray-900">
+                                            Insurance Payors ({payors ? payors.length : 0})
+                                        </h2>
+                                    </div>
+                                    <div className="space-y-1 p-2">
+                                        {payors && payors.length > 0 ? (
+                                            payors.map((payor, index) => (
+                                                <div 
+                                                    key={index} 
+                                                    className={`p-3 rounded-md cursor-pointer transition-colors ${
+                                                        selectedPayor && selectedPayor.name === payor.name 
+                                                            ? 'bg-blue-50 border border-blue-200' 
+                                                            : 'hover:bg-gray-50 border border-transparent'
+                                                    }`}
+                                                    onClick={() => setSelectedPayor(payor)}
+                                                >
                                                     <div className="font-medium text-gray-900">{payor.name}</div>
                                                     <div className="text-sm text-gray-600 capitalize">{payor.type?.replace('_', ' ')}</div>
-                                                    {payor.website && (
-                                                        <a href={payor.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline">
-                                                            Visit Website
-                                                        </a>
-                                                    )}
                                                 </div>
-                                            ))}
+                                            ))
+                                        ) : (
+                                            <div className="p-4 text-center text-gray-500">No payors found</div>
+                                        )}
+                                    </div>
+                                    <div className="p-3 border-t bg-gray-50">
+                                        <button
+                                            onClick={loadPayors}
+                                            className="w-full px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                                        >
+                                            Refresh Data
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right Column: Payor Details */}
+                            <div className="md:col-span-2">
+                                {selectedPayor ? (
+                                    <div className="bg-white rounded-lg shadow-sm">
+                                        <div className="bg-gray-50 px-6 py-4 border-b">
+                                            <h2 className="text-xl font-bold text-gray-900">{selectedPayor.name}</h2>
+                                            <p className="text-sm text-gray-600 capitalize mt-1">{selectedPayor.type?.replace('_', ' ')}</p>
                                         </div>
-                                    </div>
-                                )}
-                                
-                                <button
-                                    onClick={loadPayors}
-                                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                                >
-                                    Refresh Data
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </main>
-
-                {/* Password Modal */}
-                <PasswordModal
-                    isOpen={showAdminPasswordModal}
-                    onClose={() => {
-                        setShowAdminPasswordModal(false);
-                        setAdminAction('');
-                    }}
-                    onSubmit={handleAdminPasswordSubmit}
-                    title="Admin Authentication"
-                    message="Please enter the admin password to continue."
-                />
-
-                {/* Admin Form Modal */}
-                {showAdmin && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4 overflow-y-auto">
-                        <div className="max-h-[90vh] overflow-y-auto w-full">
-                            <AdminForm 
-                                onSave={handleSaveNewEntity}
-                                onCancel={() => {
-                                    setShowAdmin(false);
-                                    setEntityToEdit(null);
-                                }}
-                                entityToEdit={entityToEdit}
-                            />
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<EmergencyPortal />);
-</script>
-</body>
-</html><!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emergency Services Portal</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body>
-    <div id="root"></div>
-
-<style>
-    body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-    
-    .gradient-bg {
-        background: linear-gradient(135deg, #1a365d 0%, #2563eb 100%);
-    }
-    
-    .card-hover:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    }
-    
-    .entity-card {
-        transition: all 0.2s ease;
-    }
-    
-    .entity-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    }
-</style>
-
-<script type="text/babel">
-    const { useState, useEffect, useCallback, useRef, useMemo } = React;
-
-    // Initialize Supabase client
-    const supabaseUrl = 'https://cpddhpwzgkivzfkqlbop.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwZGRocHd6Z2tpdnpma3FsYm9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NjE0MzEsImV4cCI6MjA3MjQzNzQzMX0.DQPbGH8fCnCeg208XPlJStwCltpLc77DrRKUlDJE1V0';
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-    // Icon components
-    const Icon = ({ type, className = "h-4 w-4" }) => {
-        const icons = {
-            plus: "➕",
-            edit: "✏️",
-            trash: "🗑️",
-            x: "✖️",
-            search: "🔍",
-            sync: "🔄",
-            logout: "🚪",
-            lock: "🔒",
-            building: "🏢",
-            map: "📍",
-            phone: "📞",
-            calendar: "📅",
-            truck: "🚛",
-            alert: "⚠️",
-            plane: "✈️",
-            location: "📍",
-            users: "👥",
-            dispatch: "📢",
-            globe: "🌐",
-            tag: "🏷️"
-        };
-        return <span className={className}>{icons[type] || "❓"}</span>;
-    };
-
-    const EmergencyPortal = () => {
-        const [activeTab, setActiveTab] = useState('entities');
-        const [searchTerm, setSearchTerm] = useState('');
-        const [selectedEntity, setSelectedEntity] = useState(null);
-        const [selectedPayor, setSelectedPayor] = useState(null);
-        const [showAdmin, setShowAdmin] = useState(false);
-        const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
-        const [isPortalAuthenticated, setIsPortalAuthenticated] = useState(false);
-        const [showAdminPasswordModal, setShowAdminPasswordModal] = useState(false);
-        const [adminAction, setAdminAction] = useState('');
-        const [entities, setEntities] = useState([]);
-        const [payors, setPayors] = useState([]);
-        const [loading, setLoading] = useState(true);
-        const [payorsLoading, setPayorsLoading] = useState(true);
-        const [lastSync, setLastSync] = useState(null);
-        const [entityToEdit, setEntityToEdit] = useState(null);
-        const [payorToEdit, setPayorToEdit] = useState(null);
-
-        // Load entities from Supabase (your original working code)
-        const loadEntities = useCallback(async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('emergency_entities')
-                    .select('*')
-                    .order('created_at', { ascending: true });
-
-                if (error) {
-                    console.error('Error loading entities:', error);
-                    return;
-                }
-
-                const transformedEntities = data.map(entity => ({
-                    id: entity.id,
-                    name: entity.name,
-                    type: entity.type,
-                    address: entity.address,
-                    phoneNumbers: entity.phone_numbers || [],
-                    contractedService: entity.contracted_service || '',
-                    contractualObligations: entity.contractual_obligations || [],
-                    erEntrance: entity.er_entrance || '',
-                    flightProgram: entity.flight_program || { 
-                        isOneCall: false, 
-                        participating: false, 
-                        flightByGround: false, 
-                        notes: '',
-                        landingZones: []
-                    },
-                    backupServices: entity.backup_services || {
-                        airServices: [],
-                        groundServices: [],
-                        noUnitsContact: '',
-                        mutualAid: ''
-                    },
-                    countyInfo: entity.county_info || {
-                        county: '',
-                        sheriffAgencies: [],
-                        fireAgencies: [],
-                        emsAgencies: []
-                    },
-                    notes: entity.notes || '',
-                    lastContact: entity.last_contact || ''
-                }));
-
-                setEntities(transformedEntities);
-                setLastSync(new Date().toLocaleTimeString());
-            } catch (err) {
-                console.error('Error loading entities:', err);
-            } finally {
-                setLoading(false);
-            }
-        }, []);
-
-        // Load payors - placeholder for now until table is created
-        const loadPayors = useCallback(async () => {
-            try {
-                // This will fail until the table is created, that's OK
-                const { data, error } = await supabase
-                    .from('insurance_payors')
-                    .select('*')
-                    .order('created_at', { ascending: true });
-
-                if (error) {
-                    console.log('Insurance payors table not yet created:', error.message);
-                    setPayors([]);
-                    return;
-                }
-
-                const transformedPayors = data.map(payor => ({
-                    id: payor.id,
-                    name: payor.name,
-                    type: payor.type,
-                    website: payor.website,
-                    phoneNumbers: payor.phone_numbers || [],
-                    emergencyGround: payor.emergency_ground || {},
-                    nonEmergencyGround: payor.non_emergency_ground || {},
-                    rotorWing: payor.rotor_wing || {},
-                    fixedWing: payor.fixed_wing || {},
-                    referenceLinks: payor.reference_links || [],
-                    notes: payor.notes || ''
-                }));
-
-                setPayors(transformedPayors);
-                setLastSync(new Date().toLocaleTimeString());
-            } catch (err) {
-                console.log('Payors not loaded yet:', err);
-                setPayors([]);
-            } finally {
-                setPayorsLoading(false);
-            }
-        }, []);
-
-        useEffect(() => {
-            loadEntities();
-            loadPayors();
-
-            const entitiesSubscription = supabase
-                .channel('emergency_entities_changes')
-                .on('postgres_changes', { 
-                    event: '*', 
-                    schema: 'public', 
-                    table: 'emergency_entities' 
-                }, payload => {
-                    loadEntities();
-                })
-                .subscribe();
-
-            return () => {
-                entitiesSubscription.unsubscribe();
-            };
-        }, [loadEntities, loadPayors]);
-
-        // Password verification
-        const handleAdminPasswordSubmit = (password) => {
-            if (password === '04911') {
-                setIsAdminAuthenticated(true);
-                setShowAdminPasswordModal(false);
-                if (adminAction === 'admin') {
-                    setShowAdmin(true);
-                }
-            } else {
-                alert('Incorrect password');
-            }
-        };
-
-        const handlePortalPasswordSubmit = (password) => {
-            if (password === 'dispatch2024') {
-                setIsPortalAuthenticated(true);
-            } else {
-                alert('Incorrect password');
-            }
-        };
-
-        // Your existing entity management functions (unchanged)
-        const handleSaveNewEntity = async (formData) => {
-            try {
-                const today = new Date().toISOString().split('T')[0];
-                const entityToSave = {
-                    name: formData.name,
-                    type: formData.type,
-                    address: formData.address,
-                    phone_numbers: formData.phone_numbers,
-                    contracted_service: formData.contracted_service,
-                    contractual_obligations: formData.contractual_obligations,
-                    er_entrance: formData.er_entrance,
-                    flight_program: formData.flight_program,
-                    backup_services: formData.backup_services,
-                    county_info: formData.county_info,
-                    notes: formData.notes,
-                    last_contact: today
-                };
-
-                if (formData.id) {
-                    const { data, error } = await supabase
-                        .from('emergency_entities')
-                        .update(entityToSave)
-                        .eq('id', formData.id)
-                        .select();
-
-                    if (error) {
-                        console.error('Error updating entity:', error);
-                        alert('Error updating entity. Please try again.');
-                        return;
-                    }
-                    setEntityToEdit(null);
-                } else {
-                    const { data, error } = await supabase
-                        .from('emergency_entities')
-                        .insert([entityToSave])
-                        .select();
-
-                    if (error) {
-                        console.error('Error saving entity:', error);
-                        alert('Error saving entity. Please try again.');
-                        return;
-                    }
-                }
-
-                setShowAdmin(false);
-            } catch (err) {
-                console.error('Error saving entity:', err);
-                alert('Error saving entity. Please try again.');
-            }
-        };
-
-        const handleDeleteEntity = async (entityId) => {
-            if (confirm('Are you sure you want to delete this entity?')) {
-                try {
-                    const { error } = await supabase
-                        .from('emergency_entities')
-                        .delete()
-                        .eq('id', entityId);
-
-                    if (error) {
-                        console.error('Error deleting entity:', error);
-                        alert('Error deleting entity. Please try again.');
-                        return;
-                    }
-
-                    setSelectedEntity(null);
-                } catch (err) {
-                    console.error('Error deleting entity:', err);
-                    alert('Error deleting entity. Please try again.');
-                }
-            }
-        };
-
-        const handleEditEntity = (entity) => {
-            setEntityToEdit(entity);
-            setShowAdmin(true);
-        };
-
-        const filteredEntities = entities.filter(entity =>
-            entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            entity.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            entity.type.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-
-        const groupedEntities = useMemo(() => {
-            const groups = {};
-            filteredEntities.forEach(entity => {
-                if (!groups[entity.type]) {
-                    groups[entity.type] = [];
-                }
-                groups[entity.type].push(entity);
-            });
-            return groups;
-        }, [filteredEntities]);
-
-        // Password Modal Component
-        const PasswordModal = ({ isOpen, onClose, onSubmit, title, message }) => {
-            const [password, setPassword] = useState('');
-            
-            if (!isOpen) return null;
-            
-            const handleSubmit = (e) => {
-                e.preventDefault();
-                onSubmit(password);
-                setPassword('');
-            };
-            
-            return (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-                        <div className="flex justify-between items-center mb-4 border-b pb-3">
-                            <h3 className="text-xl font-medium text-gray-900 flex items-center">
-                                <Icon type="lock" className="mr-2" />
-                                {title}
-                            </h3>
-                            <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-                                <Icon type="x" />
-                            </button>
-                        </div>
-                        <p className="mb-4 text-gray-600">{message}</p>
-                        <form onSubmit={handleSubmit}>
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                                <input
-                                    type="password"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                />
-                            </div>
-                            <div className="flex justify-end">
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                                >
-                                    Submit
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            );
-        };
-
-        // If not authenticated to the portal, show login screen
-        if (!isPortalAuthenticated) {
-            return (
-                <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
-                    <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
-                        <div className="text-center mb-8">
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">Emergency Services Portal</h1>
-                            <p className="text-gray-600">Please enter your password to access the portal</p>
-                        </div>
-                        <form onSubmit={(e) => {
-                            e.preventDefault();
-                            handlePortalPasswordSubmit(document.getElementById('portalPassword').value);
-                        }}>
-                            <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Icon type="lock" />
-                                    </div>
-                                    <input
-                                        type="password"
-                                        id="portalPassword"
-                                        className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            <button
-                                type="submit"
-                                className="w-full px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
-                            >
-                                Access Portal
-                            </button>
-                        </form>
-                        <div className="mt-6 text-center text-sm text-gray-500">
-                            <p>© 2025 Emergency Services Portal. All rights reserved.</p>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        return (
-            <div className="min-h-screen bg-gray-50">
-                {/* Header */}
-                <header className="bg-white shadow-sm">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-                        <h1 className="text-2xl font-bold text-gray-900">Emergency Services Portal</h1>
-                        <div className="flex items-center space-x-4">
-                            {lastSync && (
-                                <div className="text-sm text-gray-500 flex items-center">
-                                    <Icon type="sync" className="mr-1" />
-                                    Last sync: {lastSync}
-                                </div>
-                            )}
-                            <button
-                                className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center"
-                                onClick={() => {
-                                    if (isAdminAuthenticated) {
-                                        setShowAdmin(true);
-                                    } else {
-                                        setAdminAction('admin');
-                                        setShowAdminPasswordModal(true);
-                                    }
-                                }}
-                            >
-                                <Icon type="plus" className="mr-1" />
-                                Add {activeTab === 'entities' ? 'Entity' : 'Payor'}
-                            </button>
-                            <button
-                                className="px-3 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors flex items-center"
-                                onClick={() => setIsPortalAuthenticated(false)}
-                            >
-                                <Icon type="logout" className="mr-1" />
-                                Logout
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Tab Navigation */}
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="border-b border-gray-200">
-                            <nav className="flex space-x-8" aria-label="Tabs">
-                                <button
-                                    onClick={() => {
-                                        setActiveTab('entities');
-                                        setSelectedEntity(null);
-                                        setSelectedPayor(null);
-                                        setSearchTerm('');
-                                    }}
-                                    className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
-                                        activeTab === 'entities'
-                                            ? 'border-blue-500 text-blue-600'
-                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                    }`}
-                                >
-                                    Customer/Call Source ({entities.length})
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setActiveTab('insurance');
-                                        setSelectedEntity(null);
-                                        setSelectedPayor(null);
-                                        setSearchTerm('');
-                                    }}
-                                    className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
-                                        activeTab === 'insurance'
-                                            ? 'border-blue-500 text-blue-600'
-                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                    }`}
-                                >
-                                    Insurance Portal ({payors.length})
-                                </button>
-                            </nav>
-                        </div>
-                    </div>
-                </header>
-
-                {/* Main Content */}
-                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                    {/* Search Bar */}
-                    <div className="mb-6">
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Icon type="search" />
-                            </div>
-                            <input
-                                type="text"
-                                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder={activeTab === 'entities' ? 
-                                    "Search entities by name, address, or type..." : 
-                                    "Search payors by name or type..."
-                                }
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Content based on active tab */}
-                    {activeTab === 'entities' ? (
-                        // Your existing entity display code
-                        loading ? (
-                            <div className="text-center py-10">
-                                <p className="text-gray-500">Loading entities...</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="md:col-span-1 space-y-6">
-                                    {Object.entries(groupedEntities).length > 0 ? (
-                                        Object.entries(groupedEntities).map(([type, typeEntities]) => (
-                                            <div key={type} className="bg-white rounded-lg shadow-sm overflow-hidden">
-                                                <div className="bg-gray-50 px-4 py-3 border-b">
-                                                    <h2 className="text-lg font-medium text-gray-900 capitalize">
-                                                        {type.replace('_', ' ')}s ({typeEntities.length})
-                                                    </h2>
+                                        <div className="p-6 space-y-6">
+                                            {/* Basic Info */}
+                                            <div>
+                                                <h3 className="font-medium text-gray-900 mb-3">Basic Information</h3>
+                                                <div className="bg-gray-50 p-4 rounded-md">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div>
+                                                            <p className="text-sm font-medium text-gray-500">Type</p>
+                                                            <p className="text-gray-900 capitalize">{selectedPayor.type?.replace('_', ' ')}</p>
+                                                        </div>
+                                                        {selectedPayor.website && (
+                                                            <div>
+                                                                <p className="text-sm font-medium text-gray-500">Website</p>
+                                                                <a 
+                                                                    href={selectedPayor.website} 
+                                                                    target="_blank" 
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-blue-600 hover:text-blue-800 underline"
+                                                                >
+                                                                    Visit Website
+                                                                </a>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <ul className="divide-y divide-gray-200">
-                                                    {typeEntities.map(entity => (
-                                                        <li
-                                                            key={entity.id}
-                                                            className={`px-4 py-3 cursor-pointer hover:bg-gray-50 entity-card ${selectedEntity && selectedEntity.id === entity.id ? 'bg-blue-50' : ''}`}
-                                                            onClick={() => setSelectedEntity(entity)}
-                                                        >
-                                                            <div className="flex justify-between items-center">
-                                                                <div>
-                                                                    <h3 className="text-sm font-medium text-gray-900">{entity.name}</h3>
-                                                                    {entity.address && (
-                                                                        <p className="text-xs text-gray-500 flex items-center mt-1">
-                                                                            <Icon type="map" className="mr-1" />
-                                                                            {entity.address}
-                                                                        </p>
-                                                                    )}
+                                            </div>
+
+                                            {/* Phone Numbers */}
+                                            {selectedPayor.phoneNumbers && selectedPayor.phoneNumbers.length > 0 && (
+                                                <div>
+                                                    <h3 className="font-medium text-gray-900 mb-3">Contact Information</h3>
+                                                    <div className="space-y-3">
+                                                        {selectedPayor.phoneNumbers.map((phone, index) => (
+                                                            <div key={index} className="bg-gray-50 p-4 rounded-md">
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="font-medium text-gray-900">{phone.label || 'Phone'}</span>
+                                                                    <span className="font-mono text-blue-600">{phone.number}</span>
                                                                 </div>
-                                                                {isAdminAuthenticated && (
-                                                                    <div className="flex space-x-1">
-                                                                        <button
-                                                                            className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                handleEditEntity(entity);
-                                                                            }}
-                                                                        >
-                                                                            <Icon type="edit" />
-                                                                        </button>
-                                                                        <button
-                                                                            className="p-1 text-red-600 hover:text-red-800 transition-colors"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                handleDeleteEntity(entity.id);
-                                                                            }}
-                                                                        >
-                                                                            <Icon type="trash" />
-                                                                        </button>
-                                                                    </div>
+                                                                {phone.description && (
+                                                                    <p className="text-sm text-gray-600 mt-1">{phone.description}</p>
                                                                 )}
                                                             </div>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-                                            <p className="text-gray-500">No entities found matching your search.</p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="md:col-span-2">
-                                    {selectedEntity ? (
-                                        <div className="bg-white rounded-lg shadow-sm">
-                                            <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
-                                                <h2 className="text-xl font-bold text-gray-900">{selectedEntity.name}</h2>
-                                                <div className="flex space-x-2">
-                                                    {isAdminAuthenticated && (
-                                                        <>
-                                                            <button
-                                                                className="px-3 py-1.5 bg-blue-100 text-blue-600 rounded-md flex items-center hover:bg-blue-200 transition-colors"
-                                                                onClick={() => handleEditEntity(selectedEntity)}
-                                                            >
-                                                                <Icon type="edit" className="mr-1" /> Edit
-                                                            </button>
-                                                            <button
-                                                                className="px-3 py-1.5 bg-red-100 text-red-600 rounded-md flex items-center hover:bg-red-200 transition-colors"
-                                                                onClick={() => handleDeleteEntity(selectedEntity.id)}
-                                                            >
-                                                                <Icon type="trash" className="mr-1" /> Delete
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="p-6">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    {/* Basic Information */}
-                                                    <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                        <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-                                                            <Icon type={
-                                                                selectedEntity.type === 'hospital' ? 'building' : 
-                                                                selectedEntity.type === 'fire_station' ? 'alert' : 
-                                                                selectedEntity.type === '911_center' ? 'dispatch' : 
-                                                                'users'
-                                                            } className="mr-2" />
-                                                            Basic Information
-                                                        </h3>
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-start">
-                                                                <div className="w-8 flex-shrink-0 flex justify-center">
-                                                                    <Icon type="building" />
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-sm text-gray-500">Type</p>
-                                                                    <p className="text-gray-900 capitalize">{selectedEntity.type.replace('_', ' ')}</p>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-start">
-                                                                <div className="w-8 flex-shrink-0 flex justify-center">
-                                                                    <Icon type="map" />
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-sm text-gray-500">Address</p>
-                                                                    <p className="text-gray-900">{selectedEntity.address || 'Not specified'}</p>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-start">
-                                                                <div className="w-8 flex-shrink-0 flex justify-center">
-                                                                    <Icon type="calendar" />
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-sm text-gray-500">Last Contact</p>
-                                                                    <p className="text-gray-900">{selectedEntity.lastContact || 'Not recorded'}</p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Phone Numbers */}
-                                                    {selectedEntity.phoneNumbers && selectedEntity.phoneNumbers.length > 0 && (
-                                                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                            <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-                                                                <Icon type="phone" className="mr-2" />
-                                                                Contact Information
-                                                            </h3>
-                                                            <div className="space-y-4">
-                                                                {selectedEntity.phoneNumbers.map((phone, index) => (
-                                                                    <div key={index} className="bg-white p-3 rounded-md shadow-sm">
-                                                                        <div className="flex justify-between items-center mb-1">
-                                                                            <span className="font-medium text-gray-900">{phone.label || 'Unlabeled'}</span>
-                                                                            <span className="font-mono text-blue-600">{phone.number}</span>
-                                                                        </div>
-                                                                        {phone.description && (
-                                                                            <p className="text-sm text-gray-600">{phone.description}</p>
-                                                                        )}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Contracted Service */}
-                                                    {selectedEntity.contractedService && (
-                                                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                            <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-                                                                <Icon type="truck" className="mr-2" />
-                                                                Contracted Service
-                                                            </h3>
-                                                            <p className="text-gray-900 font-medium">{selectedEntity.contractedService}</p>
-                                                            
-                                                            {selectedEntity.contractualObligations && selectedEntity.contractualObligations.length > 0 && (
-                                                                <div className="mt-3">
-                                                                    <h4 className="text-sm font-medium text-gray-700 mb-1">Contractual Obligations</h4>
-                                                                    <ul className="list-disc pl-5 space-y-1">
-                                                                        {selectedEntity.contractualObligations.map((obligation, index) => (
-                                                                            <li key={index} className="text-gray-700">{obligation}</li>
-                                                                        ))}
-                                                                    </ul>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-
-                                                    {/* ER Entrance */}
-                                                    {selectedEntity.type === 'hospital' && selectedEntity.erEntrance && (
-                                                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                            <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-                                                                <Icon type="alert" className="mr-2" />
-                                                                ER Entrance
-                                                            </h3>
-                                                            <p className="text-gray-700 bg-yellow-50 p-3 rounded-md">{selectedEntity.erEntrance}</p>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Flight Program */}
-                                                    <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                        <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-                                                            <Icon type="plane" className="mr-2" />
-                                                            Flight Program
-                                                        </h3>
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-center">
-                                                                <div className="w-8 flex-shrink-0">
-                                                                    {selectedEntity.flightProgram?.isOneCall ? (
-                                                                        <div className="h-4 w-4 bg-green-500 rounded-full"></div>
-                                                                    ) : (
-                                                                        <div className="h-4 w-4 bg-gray-300 rounded-full"></div>
-                                                                    )}
-                                                                </div>
-                                                                <p className="text-gray-700">One Call</p>
-                                                            </div>
-                                                            <div className="flex items-center">
-                                                                <div className="w-8 flex-shrink-0">
-                                                                    {selectedEntity.flightProgram?.participating ? (
-                                                                        <div className="h-4 w-4 bg-green-500 rounded-full"></div>
-                                                                    ) : (
-                                                                        <div className="h-4 w-4 bg-gray-300 rounded-full"></div>
-                                                                    )}
-                                                                </div>
-                                                                <p className="text-gray-700">Participating</p>
-                                                            </div>
-                                                            <div className="flex items-center">
-                                                                <div className="w-8 flex-shrink-0">
-                                                                    {selectedEntity.flightProgram?.flightByGround ? (
-                                                                        <div className="h-4 w-4 bg-green-500 rounded-full"></div>
-                                                                    ) : (
-                                                                        <div className="h-4 w-4 bg-gray-300 rounded-full"></div>
-                                                                    )}
-                                                                </div>
-                                                                <p className="text-gray-700">Flight By Ground</p>
-                                                            </div>
-                                                            {selectedEntity.flightProgram?.notes && (
-                                                                <div className="mt-2">
-                                                                    <p className="text-sm text-gray-500">Notes</p>
-                                                                    <p className="text-gray-700 bg-blue-50 p-2 rounded-md">{selectedEntity.flightProgram.notes}</p>
-                                                                </div>
-                                                            )}
-                                                            
-                                                            {/* Landing Zones for 911 Centers */}
-                                                            {selectedEntity.type === '911_center' && selectedEntity.flightProgram?.landingZones && selectedEntity.flightProgram.landingZones.length > 0 && (
-                                                                <div className="mt-4">
-                                                                    <h4 className="text-md font-medium text-gray-900 mb-2">Known Landing Zones</h4>
-                                                                    <div className="space-y-3">
-                                                                        {selectedEntity.flightProgram.landingZones.map((zone, index) => (
-                                                                            <div key={index} className="bg-white p-3 rounded-md shadow-sm">
-                                                                                <div className="flex items-center mb-1">
-                                                                                    <Icon type="location" className="mr-2" />
-                                                                                    <span className="font-medium text-gray-900">{zone.name}</span>
-                                                                                </div>
-                                                                                {zone.coordinates && (
-                                                                                    <p className="text-sm text-gray-600 font-mono mb-1">Coordinates: {zone.coordinates}</p>
-                                                                                )}
-                                                                                {zone.description && (
-                                                                                    <p className="text-sm text-gray-600">{zone.description}</p>
-                                                                                )}
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Backup Services */}
-                                                    <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                        <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-                                                            <Icon type="alert" className="mr-2" />
-                                                            Backup Services
-                                                        </h3>
-                                                        <div className="space-y-4">
-                                                            {/* Air Services */}
-                                                            {selectedEntity.backupServices?.airServices && selectedEntity.backupServices.airServices.length > 0 && (
-                                                                <div>
-                                                                    <h4 className="text-md font-medium text-gray-900 mb-2">Air Services</h4>
-                                                                    <div className="space-y-3">
-                                                                        {selectedEntity.backupServices.airServices.map((service, index) => (
-                                                                            <div key={index} className="bg-white p-3 rounded-md shadow-sm">
-                                                                                <div className="flex justify-between items-center mb-1">
-                                                                                    <span className="font-medium text-gray-900">{service.name}</span>
-                                                                                    {service.phone && (
-                                                                                        <span className="font-mono text-blue-600">{service.phone}</span>
-                                                                                    )}
-                                                                                </div>
-                                                                                {service.description && (
-                                                                                    <p className="text-sm text-gray-600">{service.description}</p>
-                                                                                )}
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                            
-                                                            {/* Ground Services */}
-                                                            {selectedEntity.backupServices?.groundServices && selectedEntity.backupServices.groundServices.length > 0 && (
-                                                                <div>
-                                                                    <h4 className="text-md font-medium text-gray-900 mb-2">Ground Services</h4>
-                                                                    <div className="space-y-3">
-                                                                        {selectedEntity.backupServices.groundServices.map((service, index) => (
-                                                                            <div key={index} className="bg-white p-3 rounded-md shadow-sm">
-                                                                                <div className="flex justify-between items-center mb-1">
-                                                                                    <span className="font-medium text-gray-900">{service.name}</span>
-                                                                                    {service.phone && (
-                                                                                        <span className="font-mono text-blue-600">{service.phone}</span>
-                                                                                    )}
-                                                                                </div>
-                                                                                {service.description && (
-                                                                                    <p className="text-sm text-gray-600">{service.description}</p>
-                                                                                )}
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                            
-                                                            {selectedEntity.backupServices?.noUnitsContact && (
-                                                                <div>
-                                                                    <h4 className="text-sm font-medium text-gray-700 mb-1">No Units Contact Protocol</h4>
-                                                                    <p className="text-gray-700 bg-red-50 p-3 rounded-md font-medium">{selectedEntity.backupServices.noUnitsContact}</p>
-                                                                </div>
-                                                            )}
-                                                            
-                                                            {selectedEntity.backupServices?.mutualAid && (
-                                                                <div>
-                                                                    <h4 className="text-sm font-medium text-gray-700 mb-1">Mutual Aid Agreements</h4>
-                                                                    <p className="text-gray-700 bg-yellow-50 p-3 rounded-md font-medium">{selectedEntity.backupServices.mutualAid}</p>
-                                                                </div>
-                                                            )}
-                                                            
-                                                            {!selectedEntity.backupServices?.airServices?.length && 
-                                                             !selectedEntity.backupServices?.groundServices?.length && 
-                                                             !selectedEntity.backupServices?.noUnitsContact && 
-                                                             !selectedEntity.backupServices?.mutualAid && (
-                                                                <p className="text-gray-500 italic">No backup services specified</p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* County Information */}
-                                                    <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                        <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-                                                            <Icon type="map" className="mr-2" />
-                                                            County Information
-                                                        </h3>
-                                                        
-                                                        {selectedEntity.countyInfo?.county && (
-                                                            <div className="mb-4">
-                                                                <p className="text-sm text-gray-500">County</p>
-                                                                <p className="font-medium text-gray-900">{selectedEntity.countyInfo.county}</p>
-                                                            </div>
-                                                        )}
-                                                        
-                                                        {/* Sheriff Agencies */}
-                                                        {selectedEntity.countyInfo?.sheriffAgencies && selectedEntity.countyInfo.sheriffAgencies.length > 0 && (
-                                                            <div className="mb-4">
-                                                                <h4 className="text-md font-medium text-gray-900 mb-2">Sheriff Agencies</h4>
-                                                                <div className="space-y-3">
-                                                                    {selectedEntity.countyInfo.sheriffAgencies.map((agency, index) => (
-                                                                        <div key={index} className="bg-white p-3 rounded-md shadow-sm">
-                                                                            <div className="flex justify-between items-center mb-1">
-                                                                                <span className="font-medium text-gray-900">{agency.name}</span>
-                                                                                {agency.phone && (
-                                                                                    <span className="font-mono text-blue-600">{agency.phone}</span>
-                                                                                )}
-                                                                            </div>
-                                                                            {agency.description && (
-                                                                                <p className="text-sm text-gray-600">{agency.description}</p>
-                                                                            )}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                        
-                                                        {/* Fire Agencies */}
-                                                        {selectedEntity.countyInfo?.fireAgencies && selectedEntity.countyInfo.fireAgencies.length > 0 && (
-                                                            <div className="mb-4">
-                                                                <h4 className="text-md font-medium text-gray-900 mb-2">Fire Agencies</h4>
-                                                                <div className="space-y-3">
-                                                                    {selectedEntity.countyInfo.fireAgencies.map((agency, index) => (
-                                                                        <div key={index} className="bg-white p-3 rounded-md shadow-sm">
-                                                                            <div className="flex justify-between items-center mb-1">
-                                                                                <span className="font-medium text-gray-900">{agency.name}</span>
-                                                                                {agency.phone && (
-                                                                                    <span className="font-mono text-blue-600">{agency.phone}</span>
-                                                                                )}
-                                                                            </div>
-                                                                            {agency.description && (
-                                                                                <p className="text-sm text-gray-600">{agency.description}</p>
-                                                                            )}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                        
-                                                        {/* EMS Agencies */}
-                                                        {selectedEntity.countyInfo?.emsAgencies && selectedEntity.countyInfo.emsAgencies.length > 0 && (
-                                                            <div className="mb-4">
-                                                                <h4 className="text-md font-medium text-gray-900 mb-2">EMS Agencies</h4>
-                                                                <div className="space-y-3">
-                                                                    {selectedEntity.countyInfo.emsAgencies.map((agency, index) => (
-                                                                        <div key={index} className="bg-white p-3 rounded-md shadow-sm">
-                                                                            <div className="flex justify-between items-center mb-1">
-                                                                                <span className="font-medium text-gray-900">{agency.name}</span>
-                                                                                {agency.phone && (
-                                                                                    <span className="font-mono text-blue-600">{agency.phone}</span>
-                                                                                )}
-                                                                            </div>
-                                                                            {agency.description && (
-                                                                                <p className="text-sm text-gray-600">{agency.description}</p>
-                                                                            )}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                        
-                                                        {!selectedEntity.countyInfo?.county && 
-                                                         !selectedEntity.countyInfo?.sheriffAgencies?.length && 
-                                                         !selectedEntity.countyInfo?.fireAgencies?.length && 
-                                                         !selectedEntity.countyInfo?.emsAgencies?.length && (
-                                                            <p className="text-gray-500 italic">No county information specified</p>
-                                                        )}
+                                                        ))}
                                                     </div>
                                                 </div>
+                                            )}
 
-                                                {/* Notes */}
-                                                {selectedEntity.notes && (
-                                                    <div className="mt-6 bg-gray-50 p-4 rounded-md shadow-sm">
-                                                        <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Additional Notes</h3>
-                                                        <p className="text-gray-700 whitespace-pre-wrap">{selectedEntity.notes}</p>
+                                            {/* Notes */}
+                                            {selectedPayor.notes && (
+                                                <div>
+                                                    <h3 className="font-medium text-gray-900 mb-3">Notes</h3>
+                                                    <div className="bg-gray-50 p-4 rounded-md">
+                                                        <p className="text-gray-700 whitespace-pre-wrap">{selectedPayor.notes}</p>
                                                     </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-                                            <p className="text-gray-500">Select an entity from the list to view details</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )
-                    ) : (
-                        // Insurance Portal Tab - Simple version to avoid errors
-                        <div className="text-center py-20">
-                            <h2 className="text-2xl font-bold text-gray-900 mb-4">Insurance Portal</h2>
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-2xl mx-auto">
-                                <Icon type="building" className="mx-auto mb-4 text-blue-600 text-2xl" />
-                                <h3 className="text-lg font-medium text-blue-800 mb-2">Portal Active</h3>
-                                <p className="text-blue-700 mb-4">
-                                    Found {payors ? payors.length : 0} insurance payors in database.
-                                </p>
-                                
-                                {/* Simple payor list */}
-                                {payors && payors.length > 0 && (
-                                    <div className="mt-6">
-                                        <h4 className="font-medium mb-3">Current Payors:</h4>
-                                        <div className="space-y-2">
-                                            {payors.map((payor, index) => (
-                                                <div key={index} className="bg-white p-3 rounded-md shadow-sm text-left">
-                                                    <div className="font-medium text-gray-900">{payor.name}</div>
-                                                    <div className="text-sm text-gray-600 capitalize">{payor.type?.replace('_', ' ')}</div>
-                                                    {payor.website && (
-                                                        <a href={payor.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline">
-                                                            Visit Website
-                                                        </a>
-                                                    )}
                                                 </div>
-                                            ))}
+                                            )}
+
+                                            {/* Service Categories Placeholder */}
+                                            <div>
+                                                <h3 className="font-medium text-gray-900 mb-3">Service Categories</h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="bg-gray-50 p-4 rounded-md">
+                                                        <h4 className="font-medium text-gray-900 mb-1">Emergency Ground</h4>
+                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
+                                                    </div>
+                                                    <div className="bg-gray-50 p-4 rounded-md">
+                                                        <h4 className="font-medium text-gray-900 mb-1">Non-Emergency Ground</h4>
+                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
+                                                    </div>
+                                                    <div className="bg-gray-50 p-4 rounded-md">
+                                                        <h4 className="font-medium text-gray-900 mb-1">Rotor Wing</h4>
+                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
+                                                    </div>
+                                                    <div className="bg-gray-50 p-4 rounded-md">
+                                                        <h4 className="font-medium text-gray-900 mb-1">Fixed Wing</h4>
+                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
+                                ) : (
+                                    <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+                                        <Icon type="building" className="mx-auto mb-4 text-gray-400 text-4xl" />
+                                        <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Payor</h3>
+                                        <p className="text-gray-500">Choose an insurance payor from the list to view details</p>
+                                    </div>
                                 )}
-                                
-                                <button
-                                    onClick={loadPayors}
-                                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                                >
-                                    Refresh Data
-                                </button>
                             </div>
                         </div>
                     )}
