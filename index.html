@@ -1111,14 +1111,25 @@
                 {showAdmin && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4 overflow-y-auto">
                         <div className="max-h-[90vh] overflow-y-auto w-full">
-                            <AdminForm 
-                                onSave={handleSaveNewEntity}
-                                onCancel={() => {
-                                    setShowAdmin(false);
-                                    setEntityToEdit(null);
-                                }}
-                                entityToEdit={entityToEdit}
-                            />
+                            {activeTab === 'entities' ? (
+                                <AdminForm 
+                                    onSave={handleSaveNewEntity}
+                                    onCancel={() => {
+                                        setShowAdmin(false);
+                                        setEntityToEdit(null);
+                                    }}
+                                    entityToEdit={entityToEdit}
+                                />
+                            ) : (
+                                <PayorForm 
+                                    onSave={handleSaveNewPayor}
+                                    onCancel={() => {
+                                        setShowAdmin(false);
+                                        setPayorToEdit(null);
+                                    }}
+                                    payorToEdit={payorToEdit}
+                                />
+                            )}
                         </div>
                     </div>
                 )}
