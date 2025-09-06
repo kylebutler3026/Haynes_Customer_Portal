@@ -953,201 +953,44 @@
                             </div>
                         )
                     ) : (
-                        // Insurance Portal Tab - Full Interface
-                        payorsLoading ? (
-                            <div className="text-center py-10">
-                                <p className="text-gray-500">Loading insurance payors...</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {/* Left Column: Payor List */}
-                                <div className="md:col-span-1 space-y-6">
-                                    {Object.entries(groupedPayors).length > 0 ? (
-                                        Object.entries(groupedPayors).map(([type, typePayors]) => (
-                                            <div key={type} className="bg-white rounded-lg shadow-sm overflow-hidden">
-                                                <div className="bg-gray-50 px-4 py-3 border-b">
-                                                    <h2 className="text-lg font-medium text-gray-900 capitalize">
-                                                        {type.replace('_', ' ')} ({typePayors.length})
-                                                    </h2>
-                                                </div>
-                                                <ul className="divide-y divide-gray-200">
-                                                    {typePayors.map(payor => (
-                                                        <li
-                                                            key={payor.id}
-                                                            className={`px-4 py-3 cursor-pointer hover:bg-gray-50 entity-card ${selectedPayor && selectedPayor.id === payor.id ? 'bg-blue-50' : ''}`}
-                                                            onClick={() => setSelectedPayor(payor)}
-                                                        >
-                                                            <div className="flex justify-between items-center">
-                                                                <div>
-                                                                    <h3 className="text-sm font-medium text-gray-900">{payor.name}</h3>
-                                                                    <p className="text-xs text-gray-500 capitalize mt-1">
-                                                                        {payor.type.replace('_', ' ')}
-                                                                    </p>
-                                                                </div>
-                                                                {isAdminAuthenticated && (
-                                                                    <div className="flex space-x-1">
-                                                                        <button
-                                                                            className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                alert('Edit payor functionality coming soon!');
-                                                                            }}
-                                                                        >
-                                                                            <Icon type="edit" />
-                                                                        </button>
-                                                                        <button
-                                                                            className="p-1 text-red-600 hover:text-red-800 transition-colors"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                alert('Delete payor functionality coming soon!');
-                                                                            }}
-                                                                        >
-                                                                            <Icon type="trash" />
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-                                            <p className="text-gray-500">No insurance payors found matching your search.</p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Right Column: Payor Details */}
-                                <div className="md:col-span-2">
-                                    {selectedPayor ? (
-                                        <div className="bg-white rounded-lg shadow-sm">
-                                            <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
-                                                <h2 className="text-xl font-bold text-gray-900">{selectedPayor.name}</h2>
-                                                <div className="flex space-x-2">
-                                                    {isAdminAuthenticated && (
-                                                        <>
-                                                            <button
-                                                                className="px-3 py-1.5 bg-blue-100 text-blue-600 rounded-md flex items-center hover:bg-blue-200 transition-colors"
-                                                                onClick={() => alert('Edit functionality coming soon!')}
-                                                            >
-                                                                <Icon type="edit" className="mr-1" /> Edit
-                                                            </button>
-                                                            <button
-                                                                className="px-3 py-1.5 bg-red-100 text-red-600 rounded-md flex items-center hover:bg-red-200 transition-colors"
-                                                                onClick={() => alert('Delete functionality coming soon!')}
-                                                            >
-                                                                <Icon type="trash" className="mr-1" /> Delete
-                                                            </button>
-                                                        </>
+                        // Insurance Portal Tab - Simple version to avoid errors
+                        <div className="text-center py-20">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-4">Insurance Portal</h2>
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-2xl mx-auto">
+                                <Icon type="building" className="mx-auto mb-4 text-blue-600 text-2xl" />
+                                <h3 className="text-lg font-medium text-blue-800 mb-2">Portal Active</h3>
+                                <p className="text-blue-700 mb-4">
+                                    Found {payors ? payors.length : 0} insurance payors in database.
+                                </p>
+                                
+                                {/* Simple payor list */}
+                                {payors && payors.length > 0 && (
+                                    <div className="mt-6">
+                                        <h4 className="font-medium mb-3">Current Payors:</h4>
+                                        <div className="space-y-2">
+                                            {payors.map((payor, index) => (
+                                                <div key={index} className="bg-white p-3 rounded-md shadow-sm text-left">
+                                                    <div className="font-medium text-gray-900">{payor.name}</div>
+                                                    <div className="text-sm text-gray-600 capitalize">{payor.type?.replace('_', ' ')}</div>
+                                                    {payor.website && (
+                                                        <a href={payor.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline">
+                                                            Visit Website
+                                                        </a>
                                                     )}
                                                 </div>
-                                            </div>
-                                            <div className="p-6">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    {/* Basic Information */}
-                                                    <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                        <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-                                                            <Icon type="building" className="mr-2" />
-                                                            Basic Information
-                                                        </h3>
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-start">
-                                                                <div className="w-8 flex-shrink-0 flex justify-center">
-                                                                    <Icon type="tag" />
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-sm text-gray-500">Type</p>
-                                                                    <p className="text-gray-900 capitalize">{selectedPayor.type.replace('_', ' ')}</p>
-                                                                </div>
-                                                            </div>
-                                                            
-                                                            {selectedPayor.website && (
-                                                                <div className="flex items-start">
-                                                                    <div className="w-8 flex-shrink-0 flex justify-center">
-                                                                        <Icon type="globe" />
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="text-sm text-gray-500">Website</p>
-                                                                        <a 
-                                                                            href={selectedPayor.website} 
-                                                                            target="_blank" 
-                                                                            rel="noopener noreferrer"
-                                                                            className="text-blue-600 hover:text-blue-800 underline break-all"
-                                                                        >
-                                                                            {selectedPayor.website}
-                                                                        </a>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Phone Numbers */}
-                                                    {selectedPayor.phoneNumbers && selectedPayor.phoneNumbers.length > 0 && (
-                                                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                            <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-                                                                <Icon type="phone" className="mr-2" />
-                                                                Contact Information
-                                                            </h3>
-                                                            <div className="space-y-4">
-                                                                {selectedPayor.phoneNumbers.map((phone, index) => (
-                                                                    <div key={index} className="bg-white p-3 rounded-md shadow-sm">
-                                                                        <div className="flex justify-between items-center mb-1">
-                                                                            <span className="font-medium text-gray-900">{phone.label || 'Unlabeled'}</span>
-                                                                            <span className="font-mono text-blue-600">{phone.number}</span>
-                                                                        </div>
-                                                                        {phone.description && (
-                                                                            <p className="text-sm text-gray-600">{phone.description}</p>
-                                                                        )}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Service Categories - Placeholder for now */}
-                                                <div className="mt-6">
-                                                    <h3 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Service Categories</h3>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                            <h4 className="font-medium text-gray-900 mb-2">Emergency Ground Transport</h4>
-                                                            <p className="text-sm text-gray-600">Service details will be displayed here</p>
-                                                        </div>
-                                                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                            <h4 className="font-medium text-gray-900 mb-2">Non-Emergency Ground Transport</h4>
-                                                            <p className="text-sm text-gray-600">Service details will be displayed here</p>
-                                                        </div>
-                                                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                            <h4 className="font-medium text-gray-900 mb-2">Rotor Wing (Helicopter)</h4>
-                                                            <p className="text-sm text-gray-600">Service details will be displayed here</p>
-                                                        </div>
-                                                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                            <h4 className="font-medium text-gray-900 mb-2">Fixed Wing (Airplane)</h4>
-                                                            <p className="text-sm text-gray-600">Service details will be displayed here</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Notes */}
-                                                {selectedPayor.notes && (
-                                                    <div className="mt-6 bg-gray-50 p-4 rounded-md shadow-sm">
-                                                        <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">General Notes</h3>
-                                                        <p className="text-gray-700 whitespace-pre-wrap">{selectedPayor.notes}</p>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            ))}
                                         </div>
-                                    ) : (
-                                        <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-                                            <p className="text-gray-500">Select an insurance payor from the list to view details</p>
-                                        </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
+                                
+                                <button
+                                    onClick={loadPayors}
+                                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                >
+                                    Refresh Data
+                                </button>
                             </div>
-                        )
+                        </div>
                     )}
                 </main>
 
