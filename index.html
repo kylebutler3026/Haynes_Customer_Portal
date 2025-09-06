@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -49,28 +48,28 @@
     // Icon components
     const Icon = ({ type, className = "h-4 w-4" }) => {
         const icons = {
-            plus: "\u2795",
-            edit: "\u270f\ufe0f",
-            trash: "\ud83d\uddd1\ufe0f",
-            x: "\u2716\ufe0f",
-            search: "\ud83d\udd0d",
-            sync: "\ud83d\udd04",
-            logout: "\ud83d\udeaa",
-            lock: "\ud83d\udd12",
-            building: "\ud83c\udfe2",
-            map: "\ud83d\udccd",
-            phone: "\ud83d\udcde",
-            calendar: "\ud83d\udcc5",
-            truck: "\ud83d\ude9b",
-            alert: "\u26a0\ufe0f",
-            plane: "\u2708\ufe0f",
-            location: "\ud83d\udccd",
-            users: "\ud83d\udc65",
-            dispatch: "\ud83d\udce2",
-            globe: "\ud83c\udf10",
-            tag: "\ud83c\udff7\ufe0f"
+            plus: "➕",
+            edit: "✏️",
+            trash: "🗑️",
+            x: "✖️",
+            search: "🔍",
+            sync: "🔄",
+            logout: "🚪",
+            lock: "🔒",
+            building: "🏢",
+            map: "📍",
+            phone: "📞",
+            calendar: "📅",
+            truck: "🚛",
+            alert: "⚠️",
+            plane: "✈️",
+            location: "📍",
+            users: "👥",
+            dispatch: "📢",
+            globe: "🌐",
+            tag: "🏷️"
         };
-        return <span className={className}>{icons[type] || "\u2753"}</span>;
+        return <span className={className}>{icons[type] || "❓"}</span>;
     };
 
     const EmergencyPortal = () => {
@@ -91,7 +90,7 @@
         const [entityToEdit, setEntityToEdit] = useState(null);
         const [payorToEdit, setPayorToEdit] = useState(null);
 
-        // Load entities from Supabase
+        // Load entities from Supabase (your original working code)
         const loadEntities = useCallback(async () => {
             try {
                 const { data, error } = await supabase
@@ -145,9 +144,10 @@
             }
         }, []);
 
-        // Load payors with proper error handling
+        // Load payors - placeholder for now until table is created
         const loadPayors = useCallback(async () => {
             try {
+                // This will fail until the table is created, that's OK
                 const { data, error } = await supabase
                     .from('insurance_payors')
                     .select('*')
@@ -155,56 +155,7 @@
 
                 if (error) {
                     console.log('Insurance payors table not yet created:', error.message);
-                    // Create sample payors for demonstration
-                    const samplePayors = [
-                        {
-                            id: 1,
-                            name: 'Blue Cross Blue Shield',
-                            type: 'commercial',
-                            website: 'https://www.bcbs.com',
-                            phoneNumbers: [
-                                { label: 'Provider Services', number: '1-800-xxx-xxxx' },
-                                { label: 'Prior Authorization', number: '1-800-xxx-xxxx' }
-                            ],
-                            emergencyGround: { covered: true, notes: 'Emergency transport covered' },
-                            nonEmergencyGround: { covered: true, notes: 'Requires prior authorization' },
-                            rotorWing: { covered: true, notes: 'Medical necessity required' },
-                            fixedWing: { covered: true, notes: 'Long-distance transport covered' },
-                            referenceLinks: ['https://bcbs.com/provider'],
-                            notes: 'Major commercial insurance provider'
-                        },
-                        {
-                            id: 2,
-                            name: 'Medicare',
-                            type: 'government',
-                            website: 'https://www.medicare.gov',
-                            phoneNumbers: [
-                                { label: 'Provider Services', number: '1-800-MEDICARE' }
-                            ],
-                            emergencyGround: { covered: true, notes: 'Emergency ambulance services' },
-                            nonEmergencyGround: { covered: true, notes: 'Medical necessity required' },
-                            rotorWing: { covered: true, notes: 'Air ambulance when medically necessary' },
-                            fixedWing: { covered: true, notes: 'Fixed wing for long-distance transport' },
-                            referenceLinks: ['https://medicare.gov'],
-                            notes: 'Federal health insurance for seniors and disabled'
-                        },
-                        {
-                            id: 3,
-                            name: 'Medicaid',
-                            type: 'government',
-                            website: 'https://www.medicaid.gov',
-                            phoneNumbers: [
-                                { label: 'Provider Services', number: 'Contact state Medicaid office' }
-                            ],
-                            emergencyGround: { covered: true, notes: 'Emergency medical transport' },
-                            nonEmergencyGround: { covered: true, notes: 'State-specific requirements' },
-                            rotorWing: { covered: true, notes: 'Medical necessity required' },
-                            fixedWing: { covered: true, notes: 'Long-distance medical transport' },
-                            referenceLinks: ['https://medicaid.gov'],
-                            notes: 'State-run health insurance for low-income individuals'
-                        }
-                    ];
-                    setPayors(samplePayors);
+                    setPayors([]);
                     return;
                 }
 
@@ -226,41 +177,7 @@
                 setLastSync(new Date().toLocaleTimeString());
             } catch (err) {
                 console.log('Payors not loaded yet:', err);
-                // Create sample payors for demonstration
-                const samplePayors = [
-                    {
-                        id: 1,
-                        name: 'Blue Cross Blue Shield',
-                        type: 'commercial',
-                        website: 'https://www.bcbs.com',
-                        phoneNumbers: [
-                            { label: 'Provider Services', number: '1-800-xxx-xxxx' },
-                            { label: 'Prior Authorization', number: '1-800-xxx-xxxx' }
-                        ],
-                        emergencyGround: { covered: true, notes: 'Emergency transport covered' },
-                        nonEmergencyGround: { covered: true, notes: 'Requires prior authorization' },
-                        rotorWing: { covered: true, notes: 'Medical necessity required' },
-                        fixedWing: { covered: true, notes: 'Long-distance transport covered' },
-                        referenceLinks: ['https://bcbs.com/provider'],
-                        notes: 'Major commercial insurance provider'
-                    },
-                    {
-                        id: 2,
-                        name: 'Medicare',
-                        type: 'government',
-                        website: 'https://www.medicare.gov',
-                        phoneNumbers: [
-                            { label: 'Provider Services', number: '1-800-MEDICARE' }
-                        ],
-                        emergencyGround: { covered: true, notes: 'Emergency ambulance services' },
-                        nonEmergencyGround: { covered: true, notes: 'Medical necessity required' },
-                        rotorWing: { covered: true, notes: 'Air ambulance when medically necessary' },
-                        fixedWing: { covered: true, notes: 'Fixed wing for long-distance transport' },
-                        referenceLinks: ['https://medicare.gov'],
-                        notes: 'Federal health insurance for seniors and disabled'
-                    }
-                ];
-                setPayors(samplePayors);
+                setPayors([]);
             } finally {
                 setPayorsLoading(false);
             }
@@ -307,7 +224,7 @@
             }
         };
 
-        // Entity management functions
+        // Your existing entity management functions (unchanged)
         const handleSaveNewEntity = async (formData) => {
             try {
                 const today = new Date().toISOString().split('T')[0];
@@ -386,16 +303,10 @@
             setShowAdmin(true);
         };
 
-        // Filter and grouping functions
         const filteredEntities = entities.filter(entity =>
             entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             entity.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
             entity.type.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-
-        const filteredPayors = payors.filter(payor =>
-            payor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            payor.type.toLowerCase().includes(searchTerm.toLowerCase())
         );
 
         const groupedEntities = useMemo(() => {
@@ -408,17 +319,6 @@
             });
             return groups;
         }, [filteredEntities]);
-
-        const groupedPayors = useMemo(() => {
-            const groups = {};
-            filteredPayors.forEach(payor => {
-                if (!groups[payor.type]) {
-                    groups[payor.type] = [];
-                }
-                groups[payor.type].push(payor);
-            });
-            return groups;
-        }, [filteredPayors]);
 
         // Password Modal Component
         const PasswordModal = ({ isOpen, onClose, onSubmit, title, message }) => {
@@ -470,119 +370,6 @@
             );
         };
 
-        // Admin Form Component
-        const AdminForm = ({ onSave, onCancel, entityToEdit }) => {
-            const [formData, setFormData] = useState({
-                name: '',
-                type: 'hospital',
-                address: '',
-                phone_numbers: [],
-                contracted_service: '',
-                contractual_obligations: [],
-                er_entrance: '',
-                flight_program: {
-                    isOneCall: false,
-                    participating: false,
-                    flightByGround: false,
-                    notes: '',
-                    landingZones: []
-                },
-                backup_services: {
-                    airServices: [],
-                    groundServices: [],
-                    noUnitsContact: '',
-                    mutualAid: ''
-                },
-                county_info: {
-                    county: '',
-                    sheriffAgencies: [],
-                    fireAgencies: [],
-                    emsAgencies: []
-                },
-                notes: '',
-                ...entityToEdit
-            });
-
-            useEffect(() => {
-                if (entityToEdit) {
-                    setFormData(entityToEdit);
-                }
-            }, [entityToEdit]);
-
-            const handleSubmit = (e) => {
-                e.preventDefault();
-                onSave(formData);
-            };
-
-            return (
-                <div className="bg-white rounded-lg shadow-lg p-6 max-w-4xl mx-auto">
-                    <h2 className="text-2xl font-bold mb-4">{entityToEdit ? 'Edit Entity' : 'Add New Entity'}</h2>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Name</label>
-                            <input
-                                type="text"
-                                value={formData.name}
-                                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                                required
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Type</label>
-                            <select
-                                value={formData.type}
-                                onChange={(e) => setFormData({...formData, type: e.target.value})}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                            >
-                                <option value="hospital">Hospital</option>
-                                <option value="fire_station">Fire Station</option>
-                                <option value="911_center">911 Center</option>
-                                <option value="ems_service">EMS Service</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Address</label>
-                            <input
-                                type="text"
-                                value={formData.address}
-                                onChange={(e) => setFormData({...formData, address: e.target.value})}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Notes</label>
-                            <textarea
-                                value={formData.notes}
-                                onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                                rows="3"
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                            />
-                        </div>
-
-                        <div className="flex justify-end space-x-2">
-                            <button
-                                type="button"
-                                onClick={onCancel}
-                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                            >
-                                {entityToEdit ? 'Update' : 'Create'} Entity
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            );
-        };
-
         // If not authenticated to the portal, show login screen
         if (!isPortalAuthenticated) {
             return (
@@ -618,7 +405,7 @@
                             </button>
                         </form>
                         <div className="mt-6 text-center text-sm text-gray-500">
-                            <p>\u00a9 2025 Emergency Services Portal. All rights reserved.</p>
+                            <p>© 2025 Emergency Services Portal. All rights reserved.</p>
                         </div>
                     </div>
                 </div>
@@ -724,6 +511,7 @@
 
                     {/* Content based on active tab */}
                     {activeTab === 'entities' ? (
+                        // Your existing entity display code
                         loading ? (
                             <div className="text-center py-10">
                                 <p className="text-gray-500">Loading entities...</p>
@@ -866,7 +654,7 @@
                                                                 <Icon type="phone" className="mr-2" />
                                                                 Contact Information
                                                             </h3>
-                                                            <div className="space-y-3">
+                                                            <div className="space-y-4">
                                                                 {selectedEntity.phoneNumbers.map((phone, index) => (
                                                                     <div key={index} className="bg-white p-3 rounded-md shadow-sm">
                                                                         <div className="flex justify-between items-center mb-1">
@@ -1165,241 +953,145 @@
                             </div>
                         )
                     ) : (
-                        // Insurance Portal Tab - Fixed Interface
-                        payorsLoading ? (
-                            <div className="text-center py-10">
-                                <p className="text-gray-500">Loading insurance payors...</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {/* Left Column: Payor List */}
-                                <div className="md:col-span-1 space-y-6">
-                                    {Object.entries(groupedPayors).length > 0 ? (
-                                        Object.entries(groupedPayors).map(([type, typePayors]) => (
-                                            <div key={type} className="bg-white rounded-lg shadow-sm overflow-hidden">
-                                                <div className="bg-gray-50 px-4 py-3 border-b">
-                                                    <h2 className="text-lg font-medium text-gray-900 capitalize">
-                                                        {type.replace('_', ' ')} ({typePayors.length})
-                                                    </h2>
+                        // Insurance Portal Tab - Add clickable selection
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Left Column: Simple Payor List */}
+                            <div className="md:col-span-1">
+                                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                                    <div className="bg-gray-50 px-4 py-3 border-b">
+                                        <h2 className="text-lg font-medium text-gray-900">
+                                            Insurance Payors ({payors ? payors.length : 0})
+                                        </h2>
+                                    </div>
+                                    <div className="space-y-1 p-2">
+                                        {payors && payors.length > 0 ? (
+                                            payors.map((payor, index) => (
+                                                <div 
+                                                    key={index} 
+                                                    className={`p-3 rounded-md cursor-pointer transition-colors ${
+                                                        selectedPayor && selectedPayor.name === payor.name 
+                                                            ? 'bg-blue-50 border border-blue-200' 
+                                                            : 'hover:bg-gray-50 border border-transparent'
+                                                    }`}
+                                                    onClick={() => setSelectedPayor(payor)}
+                                                >
+                                                    <div className="font-medium text-gray-900">{payor.name}</div>
+                                                    <div className="text-sm text-gray-600 capitalize">{payor.type?.replace('_', ' ')}</div>
                                                 </div>
-                                                <ul className="divide-y divide-gray-200">
-                                                    {typePayors.map(payor => (
-                                                        <li
-                                                            key={payor.id}
-                                                            className={`px-4 py-3 cursor-pointer hover:bg-gray-50 entity-card ${selectedPayor && selectedPayor.id === payor.id ? 'bg-blue-50' : ''}`}
-                                                            onClick={() => setSelectedPayor(payor)}
-                                                        >
-                                                            <div className="flex justify-between items-center">
-                                                                <div>
-                                                                    <h3 className="text-sm font-medium text-gray-900">{payor.name}</h3>
-                                                                    <p className="text-xs text-gray-500 capitalize mt-1">
-                                                                        {payor.type.replace('_', ' ')}
-                                                                    </p>
-                                                                </div>
-                                                                {isAdminAuthenticated && (
-                                                                    <div className="flex space-x-1">
-                                                                        <button
-                                                                            className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                alert('Edit payor functionality coming soon!');
-                                                                            }}
-                                                                        >
-                                                                            <Icon type="edit" />
-                                                                        </button>
-                                                                        <button
-                                                                            className="p-1 text-red-600 hover:text-red-800 transition-colors"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                alert('Delete payor functionality coming soon!');
-                                                                            }}
-                                                                        >
-                                                                            <Icon type="trash" />
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-                                            <p className="text-gray-500">No insurance payors found.</p>
-                                        </div>
-                                    )}
+                                            ))
+                                        ) : (
+                                            <div className="p-4 text-center text-gray-500">No payors found</div>
+                                        )}
+                                    </div>
+                                    <div className="p-3 border-t bg-gray-50">
+                                        <button
+                                            onClick={loadPayors}
+                                            className="w-full px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                                        >
+                                            Refresh Data
+                                        </button>
+                                    </div>
                                 </div>
+                            </div>
 
-                                {/* Right Column: Payor Details */}
-                                <div className="md:col-span-2">
-                                    {selectedPayor ? (
-                                        <div className="bg-white rounded-lg shadow-sm">
-                                            <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
-                                                <h2 className="text-xl font-bold text-gray-900">{selectedPayor.name}</h2>
-                                                <div className="flex space-x-2">
-                                                    {isAdminAuthenticated && (
-                                                        <>
-                                                            <button
-                                                                className="px-3 py-1.5 bg-blue-100 text-blue-600 rounded-md flex items-center hover:bg-blue-200 transition-colors"
-                                                                onClick={() => alert('Edit functionality coming soon!')}
-                                                            >
-                                                                <Icon type="edit" className="mr-1" /> Edit
-                                                            </button>
-                                                            <button
-                                                                className="px-3 py-1.5 bg-red-100 text-red-600 rounded-md flex items-center hover:bg-red-200 transition-colors"
-                                                                onClick={() => alert('Delete functionality coming soon!')}
-                                                            >
-                                                                <Icon type="trash" className="mr-1" /> Delete
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="p-6">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    {/* Basic Information */}
-                                                    <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                        <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-                                                            <Icon type="building" className="mr-2" />
-                                                            Basic Information
-                                                        </h3>
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-start">
-                                                                <div className="w-8 flex-shrink-0 flex justify-center">
-                                                                    <Icon type="tag" />
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-sm text-gray-500">Type</p>
-                                                                    <p className="text-gray-900 capitalize">{selectedPayor.type.replace('_', ' ')}</p>
-                                                                </div>
-                                                            </div>
-                                                            
-                                                            {selectedPayor.website && (
-                                                                <div className="flex items-start">
-                                                                    <div className="w-8 flex-shrink-0 flex justify-center">
-                                                                        <Icon type="globe" />
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="text-sm text-gray-500">Website</p>
-                                                                        <a 
-                                                                            href={selectedPayor.website} 
-                                                                            target="_blank" 
-                                                                            rel="noopener noreferrer"
-                                                                            className="text-blue-600 hover:text-blue-800 underline break-all"
-                                                                        >
-                                                                            {selectedPayor.website}
-                                                                        </a>
-                                                                    </div>
-                                                                </div>
-                                                            )}
+                            {/* Right Column: Payor Details */}
+                            <div className="md:col-span-2">
+                                {selectedPayor ? (
+                                    <div className="bg-white rounded-lg shadow-sm">
+                                        <div className="bg-gray-50 px-6 py-4 border-b">
+                                            <h2 className="text-xl font-bold text-gray-900">{selectedPayor.name}</h2>
+                                            <p className="text-sm text-gray-600 capitalize mt-1">{selectedPayor.type?.replace('_', ' ')}</p>
+                                        </div>
+                                        <div className="p-6 space-y-6">
+                                            {/* Basic Info */}
+                                            <div>
+                                                <h3 className="font-medium text-gray-900 mb-3">Basic Information</h3>
+                                                <div className="bg-gray-50 p-4 rounded-md">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div>
+                                                            <p className="text-sm font-medium text-gray-500">Type</p>
+                                                            <p className="text-gray-900 capitalize">{selectedPayor.type?.replace('_', ' ')}</p>
                                                         </div>
-                                                    </div>
-
-                                                    {/* Phone Numbers */}
-                                                    {selectedPayor.phoneNumbers && selectedPayor.phoneNumbers.length > 0 && (
-                                                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                            <h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-                                                                <Icon type="phone" className="mr-2" />
-                                                                Contact Information
-                                                            </h3>
-                                                            <div className="space-y-4">
-                                                                {selectedPayor.phoneNumbers.map((phone, index) => (
-                                                                    <div key={index} className="bg-white p-3 rounded-md shadow-sm">
-                                                                        <div className="flex justify-between items-center mb-1">
-                                                                            <span className="font-medium text-gray-900">{phone.label || 'Unlabeled'}</span>
-                                                                            <span className="font-mono text-blue-600">{phone.number}</span>
-                                                                        </div>
-                                                                        {phone.description && (
-                                                                            <p className="text-sm text-gray-600">{phone.description}</p>
-                                                                        )}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Service Categories */}
-                                                <div className="mt-6">
-                                                    <h3 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Service Categories</h3>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                            <h4 className="font-medium text-gray-900 mb-2">Emergency Ground Transport</h4>
-                                                            <p className="text-sm text-gray-600">
-                                                                {selectedPayor.emergencyGround?.notes || 'Service details not available'}
-                                                            </p>
-                                                            <p className="text-sm text-green-600 mt-1">
-                                                                {selectedPayor.emergencyGround?.covered ? '\u2713 Covered' : '\u2717 Not Covered'}
-                                                            </p>
-                                                        </div>
-                                                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                            <h4 className="font-medium text-gray-900 mb-2">Non-Emergency Ground Transport</h4>
-                                                            <p className="text-sm text-gray-600">
-                                                                {selectedPayor.nonEmergencyGround?.notes || 'Service details not available'}
-                                                            </p>
-                                                            <p className="text-sm text-green-600 mt-1">
-                                                                {selectedPayor.nonEmergencyGround?.covered ? '\u2713 Covered' : '\u2717 Not Covered'}
-                                                            </p>
-                                                        </div>
-                                                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                            <h4 className="font-medium text-gray-900 mb-2">Rotor Wing (Helicopter)</h4>
-                                                            <p className="text-sm text-gray-600">
-                                                                {selectedPayor.rotorWing?.notes || 'Service details not available'}
-                                                            </p>
-                                                            <p className="text-sm text-green-600 mt-1">
-                                                                {selectedPayor.rotorWing?.covered ? '\u2713 Covered' : '\u2717 Not Covered'}
-                                                            </p>
-                                                        </div>
-                                                        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
-                                                            <h4 className="font-medium text-gray-900 mb-2">Fixed Wing (Airplane)</h4>
-                                                            <p className="text-sm text-gray-600">
-                                                                {selectedPayor.fixedWing?.notes || 'Service details not available'}
-                                                            </p>
-                                                            <p className="text-sm text-green-600 mt-1">
-                                                                {selectedPayor.fixedWing?.covered ? '\u2713 Covered' : '\u2717 Not Covered'}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Reference Links */}
-                                                {selectedPayor.referenceLinks && selectedPayor.referenceLinks.length > 0 && (
-                                                    <div className="mt-6 bg-gray-50 p-4 rounded-md shadow-sm">
-                                                        <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Reference Links</h3>
-                                                        <div className="space-y-2">
-                                                            {selectedPayor.referenceLinks.map((link, index) => (
+                                                        {selectedPayor.website && (
+                                                            <div>
+                                                                <p className="text-sm font-medium text-gray-500">Website</p>
                                                                 <a 
-                                                                    key={index}
-                                                                    href={link} 
+                                                                    href={selectedPayor.website} 
                                                                     target="_blank" 
                                                                     rel="noopener noreferrer"
-                                                                    className="block text-blue-600 hover:text-blue-800 underline"
+                                                                    className="text-blue-600 hover:text-blue-800 underline"
                                                                 >
-                                                                    {link}
+                                                                    Visit Website
                                                                 </a>
-                                                            ))}
-                                                        </div>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
+                                                </div>
+                                            </div>
 
-                                                {/* Notes */}
-                                                {selectedPayor.notes && (
-                                                    <div className="mt-6 bg-gray-50 p-4 rounded-md shadow-sm">
-                                                        <h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">General Notes</h3>
+                                            {/* Phone Numbers */}
+                                            {selectedPayor.phoneNumbers && selectedPayor.phoneNumbers.length > 0 && (
+                                                <div>
+                                                    <h3 className="font-medium text-gray-900 mb-3">Contact Information</h3>
+                                                    <div className="space-y-3">
+                                                        {selectedPayor.phoneNumbers.map((phone, index) => (
+                                                            <div key={index} className="bg-gray-50 p-4 rounded-md">
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="font-medium text-gray-900">{phone.label || 'Phone'}</span>
+                                                                    <span className="font-mono text-blue-600">{phone.number}</span>
+                                                                </div>
+                                                                {phone.description && (
+                                                                    <p className="text-sm text-gray-600 mt-1">{phone.description}</p>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Notes */}
+                                            {selectedPayor.notes && (
+                                                <div>
+                                                    <h3 className="font-medium text-gray-900 mb-3">Notes</h3>
+                                                    <div className="bg-gray-50 p-4 rounded-md">
                                                         <p className="text-gray-700 whitespace-pre-wrap">{selectedPayor.notes}</p>
                                                     </div>
-                                                )}
+                                                </div>
+                                            )}
+
+                                            {/* Service Categories Placeholder */}
+                                            <div>
+                                                <h3 className="font-medium text-gray-900 mb-3">Service Categories</h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="bg-gray-50 p-4 rounded-md">
+                                                        <h4 className="font-medium text-gray-900 mb-1">Emergency Ground</h4>
+                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
+                                                    </div>
+                                                    <div className="bg-gray-50 p-4 rounded-md">
+                                                        <h4 className="font-medium text-gray-900 mb-1">Non-Emergency Ground</h4>
+                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
+                                                    </div>
+                                                    <div className="bg-gray-50 p-4 rounded-md">
+                                                        <h4 className="font-medium text-gray-900 mb-1">Rotor Wing</h4>
+                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
+                                                    </div>
+                                                    <div className="bg-gray-50 p-4 rounded-md">
+                                                        <h4 className="font-medium text-gray-900 mb-1">Fixed Wing</h4>
+                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    ) : (
-                                        <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-                                            <p className="text-gray-500">Select an insurance payor from the list to view details</p>
-                                        </div>
-                                    )}
-                                </div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+                                        <Icon type="building" className="mx-auto mb-4 text-gray-400 text-4xl" />
+                                        <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Payor</h3>
+                                        <p className="text-gray-500">Choose an insurance payor from the list to view details</p>
+                                    </div>
+                                )}
                             </div>
-                        )
+                        </div>
                     )}
                 </main>
 
@@ -1419,14 +1111,25 @@
                 {showAdmin && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4 overflow-y-auto">
                         <div className="max-h-[90vh] overflow-y-auto w-full">
-                            <AdminForm 
-                                onSave={handleSaveNewEntity}
-                                onCancel={() => {
-                                    setShowAdmin(false);
-                                    setEntityToEdit(null);
-                                }}
-                                entityToEdit={entityToEdit}
-                            />
+                            {activeTab === 'entities' ? (
+                                <AdminForm 
+                                    onSave={handleSaveNewEntity}
+                                    onCancel={() => {
+                                        setShowAdmin(false);
+                                        setEntityToEdit(null);
+                                    }}
+                                    entityToEdit={entityToEdit}
+                                />
+                            ) : (
+                                <PayorForm 
+                                    onSave={handleSaveNewPayor}
+                                    onCancel={() => {
+                                        setShowAdmin(false);
+                                        setPayorToEdit(null);
+                                    }}
+                                    payorToEdit={payorToEdit}
+                                />
+                            )}
                         </div>
                     </div>
                 )}
@@ -1439,4 +1142,3 @@
 </script>
 </body>
 </html>
-        
