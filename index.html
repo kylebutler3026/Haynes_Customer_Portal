@@ -90,7 +90,7 @@
         const [entityToEdit, setEntityToEdit] = useState(null);
         const [payorToEdit, setPayorToEdit] = useState(null);
 
-        // Load entities from Supabase (your original working code)
+        // Load entities from Supabase
         const loadEntities = useCallback(async () => {
             try {
                 const { data, error } = await supabase
@@ -144,10 +144,9 @@
             }
         }, []);
 
-        // Load payors - placeholder for now until table is created
+        // Load payors from Supabase
         const loadPayors = useCallback(async () => {
             try {
-                // This will fail until the table is created, that's OK
                 const { data, error } = await supabase
                     .from('insurance_payors')
                     .select('*')
@@ -198,8 +197,20 @@
                 })
                 .subscribe();
 
+            const payorsSubscription = supabase
+                .channel('insurance_payors_changes')
+                .on('postgres_changes', { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'insurance_payors' 
+                }, payload => {
+                    loadPayors();
+                })
+                .subscribe();
+
             return () => {
                 entitiesSubscription.unsubscribe();
+                payorsSubscription.unsubscribe();
             };
         }, [loadEntities, loadPayors]);
 
@@ -224,7 +235,7 @@
             }
         };
 
-        // Your existing entity management functions (unchanged)
+        // Entity management functions
         const handleSaveNewEntity = async (formData) => {
             try {
                 const today = new Date().toISOString().split('T')[0];
@@ -276,6 +287,55 @@
             }
         };
 
+        // NEW: Insurance Payor management functions
+        const handleSaveNewPayor = async (formData) => {
+            try {
+                const payorToSave = {
+                    name: formData.name,
+                    type: formData.type,
+                    website: formData.website,
+                    phone_numbers: formData.phone_numbers,
+                    emergency_ground: formData.emergency_ground,
+                    non_emergency_ground: formData.non_emergency_ground,
+                    rotor_wing: formData.rotor_wing,
+                    fixed_wing: formData.fixed_wing,
+                    reference_links: formData.reference_links,
+                    notes: formData.notes
+                };
+
+                if (formData.id) {
+                    const { data, error } = await supabase
+                        .from('insurance_payors')
+                        .update(payorToSave)
+                        .eq('id', formData.id)
+                        .select();
+
+                    if (error) {
+                        console.error('Error updating payor:', error);
+                        alert('Error updating payor. Please try again.');
+                        return;
+                    }
+                    setPayorToEdit(null);
+                } else {
+                    const { data, error } = await supabase
+                        .from('insurance_payors')
+                        .insert([payorToSave])
+                        .select();
+
+                    if (error) {
+                        console.error('Error saving payor:', error);
+                        alert('Error saving payor. Please try again.');
+                        return;
+                    }
+                }
+
+                setShowAdmin(false);
+            } catch (err) {
+                console.error('Error saving payor:', err);
+                alert('Error saving payor. Please try again.');
+            }
+        };
+
         const handleDeleteEntity = async (entityId) => {
             if (confirm('Are you sure you want to delete this entity?')) {
                 try {
@@ -298,8 +358,35 @@
             }
         };
 
+        const handleDeletePayor = async (payorId) => {
+            if (confirm('Are you sure you want to delete this payor?')) {
+                try {
+                    const { error } = await supabase
+                        .from('insurance_payors')
+                        .delete()
+                        .eq('id', payorId);
+
+                    if (error) {
+                        console.error('Error deleting payor:', error);
+                        alert('Error deleting payor. Please try again.');
+                        return;
+                    }
+
+                    setSelectedPayor(null);
+                } catch (err) {
+                    console.error('Error deleting payor:', err);
+                    alert('Error deleting payor. Please try again.');
+                }
+            }
+        };
+
         const handleEditEntity = (entity) => {
             setEntityToEdit(entity);
+            setShowAdmin(true);
+        };
+
+        const handleEditPayor = (payor) => {
+            setPayorToEdit(payor);
             setShowAdmin(true);
         };
 
@@ -307,6 +394,11 @@
             entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             entity.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
             entity.type.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        const filteredPayors = payors.filter(payor =>
+            payor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            payor.type.toLowerCase().includes(searchTerm.toLowerCase())
         );
 
         const groupedEntities = useMemo(() => {
@@ -511,7 +603,7 @@
 
                     {/* Content based on active tab */}
                     {activeTab === 'entities' ? (
-                        // Your existing entity display code
+                        // Entity display code
                         loading ? (
                             <div className="text-center py-10">
                                 <p className="text-gray-500">Loading entities...</p>
@@ -604,6 +696,7 @@
                                                 </div>
                                             </div>
                                             <div className="p-6">
+                                                {/* Entity detail display remains the same */}
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     {/* Basic Information */}
                                                     <div className="bg-gray-50 p-4 rounded-md shadow-sm">
@@ -953,30 +1046,56 @@
                             </div>
                         )
                     ) : (
-                        // Insurance Portal Tab - Add clickable selection
+                        // Insurance Portal Tab 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {/* Left Column: Simple Payor List */}
+                            {/* Left Column: Payor List */}
                             <div className="md:col-span-1">
                                 <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                                     <div className="bg-gray-50 px-4 py-3 border-b">
                                         <h2 className="text-lg font-medium text-gray-900">
-                                            Insurance Payors ({payors ? payors.length : 0})
+                                            Insurance Payors ({filteredPayors.length})
                                         </h2>
                                     </div>
                                     <div className="space-y-1 p-2">
-                                        {payors && payors.length > 0 ? (
-                                            payors.map((payor, index) => (
+                                        {filteredPayors && filteredPayors.length > 0 ? (
+                                            filteredPayors.map((payor, index) => (
                                                 <div 
-                                                    key={index} 
+                                                    key={payor.id || index} 
                                                     className={`p-3 rounded-md cursor-pointer transition-colors ${
-                                                        selectedPayor && selectedPayor.name === payor.name 
+                                                        selectedPayor && selectedPayor.id === payor.id 
                                                             ? 'bg-blue-50 border border-blue-200' 
                                                             : 'hover:bg-gray-50 border border-transparent'
                                                     }`}
                                                     onClick={() => setSelectedPayor(payor)}
                                                 >
-                                                    <div className="font-medium text-gray-900">{payor.name}</div>
-                                                    <div className="text-sm text-gray-600 capitalize">{payor.type?.replace('_', ' ')}</div>
+                                                    <div className="flex justify-between items-center">
+                                                        <div>
+                                                            <div className="font-medium text-gray-900">{payor.name}</div>
+                                                            <div className="text-sm text-gray-600 capitalize">{payor.type?.replace('_', ' ')}</div>
+                                                        </div>
+                                                        {isAdminAuthenticated && (
+                                                            <div className="flex space-x-1">
+                                                                <button
+                                                                    className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleEditPayor(payor);
+                                                                    }}
+                                                                >
+                                                                    <Icon type="edit" />
+                                                                </button>
+                                                                <button
+                                                                    className="p-1 text-red-600 hover:text-red-800 transition-colors"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDeletePayor(payor.id);
+                                                                    }}
+                                                                >
+                                                                    <Icon type="trash" />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))
                                         ) : (
@@ -998,9 +1117,29 @@
                             <div className="md:col-span-2">
                                 {selectedPayor ? (
                                     <div className="bg-white rounded-lg shadow-sm">
-                                        <div className="bg-gray-50 px-6 py-4 border-b">
-                                            <h2 className="text-xl font-bold text-gray-900">{selectedPayor.name}</h2>
-                                            <p className="text-sm text-gray-600 capitalize mt-1">{selectedPayor.type?.replace('_', ' ')}</p>
+                                        <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+                                            <div>
+                                                <h2 className="text-xl font-bold text-gray-900">{selectedPayor.name}</h2>
+                                                <p className="text-sm text-gray-600 capitalize mt-1">{selectedPayor.type?.replace('_', ' ')}</p>
+                                            </div>
+                                            <div className="flex space-x-2">
+                                                {isAdminAuthenticated && (
+                                                    <>
+                                                        <button
+                                                            className="px-3 py-1.5 bg-blue-100 text-blue-600 rounded-md flex items-center hover:bg-blue-200 transition-colors"
+                                                            onClick={() => handleEditPayor(selectedPayor)}
+                                                        >
+                                                            <Icon type="edit" className="mr-1" /> Edit
+                                                        </button>
+                                                        <button
+                                                            className="px-3 py-1.5 bg-red-100 text-red-600 rounded-md flex items-center hover:bg-red-200 transition-colors"
+                                                            onClick={() => handleDeletePayor(selectedPayor.id)}
+                                                        >
+                                                            <Icon type="trash" className="mr-1" /> Delete
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="p-6 space-y-6">
                                             {/* Basic Info */}
@@ -1049,616 +1188,46 @@
                                                 </div>
                                             )}
 
-                                            {/* Notes */}
-                                            {selectedPayor.notes && (
-                                                <div>
-                                                    <h3 className="font-medium text-gray-900 mb-3">Notes</h3>
-                                                    <div className="bg-gray-50 p-4 rounded-md">
-                                                        <p className="text-gray-700 whitespace-pre-wrap">{selectedPayor.notes}</p>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Service Categories Placeholder */}
+                                            {/* Service Categories */}
                                             <div>
                                                 <h3 className="font-medium text-gray-900 mb-3">Service Categories</h3>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {/* Emergency Ground */}
                                                     <div className="bg-gray-50 p-4 rounded-md">
-                                                        <h4 className="font-medium text-gray-900 mb-1">Emergency Ground</h4>
-                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
+                                                        <h4 className="font-medium text-gray-900 mb-2">Emergency Ground</h4>
+                                                        {selectedPayor.emergencyGround?.phone && (
+                                                            <p className="text-sm text-gray-600">Phone: <span className="font-mono text-blue-600">{selectedPayor.emergencyGround.phone}</span></p>
+                                                        )}
+                                                        {selectedPayor.emergencyGround?.preauth_required && (
+                                                            <p className="text-sm text-red-600 font-medium">Pre-authorization required</p>
+                                                        )}
+                                                        {selectedPayor.emergencyGround?.notes && (
+                                                            <p className="text-sm text-gray-600 mt-1">{selectedPayor.emergencyGround.notes}</p>
+                                                        )}
+                                                        {!selectedPayor.emergencyGround?.phone && !selectedPayor.emergencyGround?.notes && (
+                                                            <p className="text-sm text-gray-500">No details available</p>
+                                                        )}
                                                     </div>
+
+                                                    {/* Non-Emergency Ground */}
                                                     <div className="bg-gray-50 p-4 rounded-md">
-                                                        <h4 className="font-medium text-gray-900 mb-1">Non-Emergency Ground</h4>
-                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
+                                                        <h4 className="font-medium text-gray-900 mb-2">Non-Emergency Ground</h4>
+                                                        {selectedPayor.nonEmergencyGround?.phone && (
+                                                            <p className="text-sm text-gray-600">Phone: <span className="font-mono text-blue-600">{selectedPayor.nonEmergencyGround.phone}</span></p>
+                                                        )}
+                                                        {selectedPayor.nonEmergencyGround?.preauth_required && (
+                                                            <p className="text-sm text-red-600 font-medium">Pre-authorization required</p>
+                                                        )}
+                                                        {selectedPayor.nonEmergencyGround?.notes && (
+                                                            <p className="text-sm text-gray-600 mt-1">{selectedPayor.nonEmergencyGround.notes}</p>
+                                                        )}
+                                                        {!selectedPayor.nonEmergencyGround?.phone && !selectedPayor.nonEmergencyGround?.notes && (
+                                                            <p className="text-sm text-gray-500">No details available</p>
+                                                        )}
                                                     </div>
+
+                                                    {/* Rotor Wing */}
                                                     <div className="bg-gray-50 p-4 rounded-md">
-                                                        <h4 className="font-medium text-gray-900 mb-1">Rotor Wing</h4>
-                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
-                                                    </div>
-                                                    <div className="bg-gray-50 p-4 rounded-md">
-                                                        <h4 className="font-medium text-gray-900 mb-1">Fixed Wing</h4>
-                                                        <p className="text-sm text-gray-600">Service details coming soon</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-                                        <Icon type="building" className="mx-auto mb-4 text-gray-400 text-4xl" />
-                                        <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Payor</h3>
-                                        <p className="text-gray-500">Choose an insurance payor from the list to view details</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </main>
-
-                {/* Password Modal */}
-                <PasswordModal
-                    isOpen={showAdminPasswordModal}
-                    onClose={() => {
-                        setShowAdminPasswordModal(false);
-                        setAdminAction('');
-                    }}
-                    onSubmit={handleAdminPasswordSubmit}
-                    title="Admin Authentication"
-                    message="Please enter the admin password to continue."
-                />
-
-                {/* Admin Form Modal - Embedded forms to avoid component issues */}
-                {showAdmin && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4 overflow-y-auto">
-                        <div className="max-h-[90vh] overflow-y-auto w-full">
-                            {activeTab === 'entities' ? (
-                                // Entity Admin Form
-                                <div className="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto">
-                                    <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-3">
-                                        {entityToEdit ? 'Edit Entity' : 'Add New Entity'}
-                                    </h2>
-                                    <form onSubmit={(e) => {
-                                        e.preventDefault();
-                                        const formData = new FormData(e.target);
-                                        const entityData = {
-                                            name: formData.get('name'),
-                                            type: formData.get('type'),
-                                            address: formData.get('address'),
-                                            phone_numbers: [{ 
-                                                label: formData.get('phone_label') || 'Main', 
-                                                number: formData.get('phone_number') || '', 
-                                                description: formData.get('phone_description') || '' 
-                                            }],
-                                            contracted_service: formData.get('contracted_service') || '',
-                                            contractual_obligations: [],
-                                            er_entrance: formData.get('er_entrance') || '',
-                                            flight_program: {
-                                                isOneCall: formData.get('is_one_call') === 'on',
-                                                participating: formData.get('participating') === 'on',
-                                                flightByGround: formData.get('flight_by_ground') === 'on',
-                                                notes: formData.get('flight_notes') || '',
-                                                landingZones: []
-                                            },
-                                            backup_services: {
-                                                airServices: formData.get('air_services') ? [{ name: formData.get('air_services'), phone: '', description: '' }] : [],
-                                                groundServices: formData.get('ground_services') ? [{ name: formData.get('ground_services'), phone: '', description: '' }] : [],
-                                                noUnitsContact: formData.get('no_units_contact') || '',
-                                                mutualAid: formData.get('mutual_aid') || ''
-                                            },
-                                            county_info: {
-                                                county: formData.get('county') || '',
-                                                sheriffAgencies: formData.get('sheriff_agencies') ? [{ name: formData.get('sheriff_agencies'), phone: '', description: '' }] : [],
-                                                fireAgencies: formData.get('fire_agencies') ? [{ name: formData.get('fire_agencies'), phone: '', description: '' }] : [],
-                                                emsAgencies: formData.get('ems_agencies') ? [{ name: formData.get('ems_agencies'), phone: '', description: '' }] : []
-                                            },
-                                            notes: formData.get('notes') || '',
-                                            id: entityToEdit?.id
-                                        };
-                                        handleSaveNewEntity(entityData);
-                                    }} className="space-y-6">
-                                        {/* Basic Information */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Basic Information</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                                    <input
-                                                        type="text"
-                                                        name="name"
-                                                        defaultValue={entityToEdit?.name || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        required
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                                                    <select
-                                                        name="type"
-                                                        defaultValue={entityToEdit?.type || 'hospital'}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    >
-                                                        <option value="hospital">Hospital</option>
-                                                        <option value="clinic">Clinic</option>
-                                                        <option value="fire_station">Fire Station</option>
-                                                        <option value="police_station">Police Station</option>
-                                                        <option value="ems_station">EMS Station</option>
-                                                        <option value="911_center">911 Center</option>
-                                                        <option value="other">Other</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div className="mt-4">
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                                                <input
-                                                    type="text"
-                                                    name="address"
-                                                    defaultValue={entityToEdit?.address || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Phone Number */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Primary Phone</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
-                                                    <input
-                                                        type="text"
-                                                        name="phone_label"
-                                                        defaultValue={entityToEdit?.phoneNumbers?.[0]?.label || 'Main'}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="e.g., Main, Emergency"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Number</label>
-                                                    <input
-                                                        type="text"
-                                                        name="phone_number"
-                                                        defaultValue={entityToEdit?.phoneNumbers?.[0]?.number || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="Phone number"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                                    <input
-                                                        type="text"
-                                                        name="phone_description"
-                                                        defaultValue={entityToEdit?.phoneNumbers?.[0]?.description || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="e.g., Front Desk, ER"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Notes */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Notes</h3>
-                                            <textarea
-                                                name="notes"
-                                                defaultValue={entityToEdit?.notes || ''}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                placeholder="Any additional information"
-                                                rows="4"
-                                            ></textarea>
-                                        </div>
-
-                                        {/* Form Actions */}
-                                        <div className="flex justify-end space-x-3 pt-4 border-t">
-                                            <button
-                                                type="button"
-                                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
-                                                onClick={() => {
-                                                    setShowAdmin(false);
-                                                    setEntityToEdit(null);
-                                                }}
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                                            >
-                                                {entityToEdit ? 'Update Entity' : 'Save Entity'}
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            ) : (
-                                // Insurance Payor Admin Form
-                                <div className="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto">
-                                    <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-3">
-                                        {payorToEdit ? 'Edit Insurance Payor' : 'Add New Insurance Payor'}
-                                    </h2>
-                                    <form onSubmit={(e) => {
-                                        e.preventDefault();
-                                        const formData = new FormData(e.target);
-                                        const payorData = {
-                                            name: formData.get('name'),
-                                            type: formData.get('type'),
-                                            website: formData.get('website'),
-                                            phone_numbers: [{ 
-                                                label: formData.get('phone_label') || 'Main', 
-                                                number: formData.get('phone_number') || '', 
-                                                description: formData.get('phone_description') || '' 
-                                            }],
-                                            emergency_ground: {
-                                                phone: formData.get('emergency_phone') || '',
-                                                preauth_required: formData.get('emergency_preauth') === 'on',
-                                                preauth_phone: formData.get('emergency_preauth_phone') || '',
-                                                preauth_website: formData.get('emergency_preauth_website') || '',
-                                                notes: formData.get('emergency_notes') || ''
-                                            },
-                                            non_emergency_ground: {
-                                                phone: formData.get('nonemergency_phone') || '',
-                                                preauth_required: formData.get('nonemergency_preauth') === 'on',
-                                                preauth_phone: formData.get('nonemergency_preauth_phone') || '',
-                                                preauth_website: formData.get('nonemergency_preauth_website') || '',
-                                                notes: formData.get('nonemergency_notes') || ''
-                                            },
-                                            rotor_wing: {
-                                                phone: formData.get('rotor_phone') || '',
-                                                preauth_required: formData.get('rotor_preauth') === 'on',
-                                                preauth_phone: formData.get('rotor_preauth_phone') || '',
-                                                preauth_website: formData.get('rotor_preauth_website') || '',
-                                                notes: formData.get('rotor_notes') || ''
-                                            },
-                                            fixed_wing: {
-                                                phone: formData.get('fixed_phone') || '',
-                                                preauth_required: formData.get('fixed_preauth') === 'on',
-                                                preauth_phone: formData.get('fixed_preauth_phone') || '',
-                                                preauth_website: formData.get('fixed_preauth_website') || '',
-                                                notes: formData.get('fixed_notes') || ''
-                                            },
-                                            reference_links: [],
-                                            notes: formData.get('notes') || '',
-                                            id: payorToEdit?.id
-                                        };
-                                        handleSaveNewPayor(payorData);
-                                    }} className="space-y-6">
-                                        {/* Basic Information */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Basic Information</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Payor Name</label>
-                                                    <input
-                                                        type="text"
-                                                        name="name"
-                                                        defaultValue={payorToEdit?.name || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        required
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                                                    <select
-                                                        name="type"
-                                                        defaultValue={payorToEdit?.type || 'commercial'}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    >
-                                                        <option value="commercial">Commercial</option>
-                                                        <option value="medicare">Medicare</option>
-                                                        <option value="medicaid">Medicaid</option>
-                                                        <option value="workers_comp">Workers Compensation</option>
-                                                        <option value="auto_insurance">Auto Insurance</option>
-                                                        <option value="government">Government</option>
-                                                        <option value="other">Other</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div className="mt-4">
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
-                                                <input
-                                                    type="url"
-                                                    name="website"
-                                                    defaultValue={payorToEdit?.website || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="https://..."
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Primary Phone */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Primary Contact</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
-                                                    <input
-                                                        type="text"
-                                                        name="phone_label"
-                                                        defaultValue={payorToEdit?.phoneNumbers?.[0]?.label || 'Main'}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="e.g., Main, Claims"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Number</label>
-                                                    <input
-                                                        type="text"
-                                                        name="phone_number"
-                                                        defaultValue={payorToEdit?.phoneNumbers?.[0]?.number || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="Phone number"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                                    <input
-                                                        type="text"
-                                                        name="phone_description"
-                                                        defaultValue={payorToEdit?.phoneNumbers?.[0]?.description || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="Department or purpose"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Emergency Ground Transport */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Emergency Ground Transport</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="emergency_phone"
-                                                        defaultValue={payorToEdit?.emergencyGround?.phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="emergency_preauth"
-                                                        defaultChecked={payorToEdit?.emergencyGround?.preauth_required || false}
-                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                    />
-                                                    <label className="ml-2 text-sm text-gray-700">Pre-authorization Required</label>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="emergency_preauth_phone"
-                                                        defaultValue={payorToEdit?.emergencyGround?.preauth_phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Website</label>
-                                                    <input
-                                                        type="url"
-                                                        name="emergency_preauth_website"
-                                                        defaultValue={payorToEdit?.emergencyGround?.preauth_website || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                                <textarea
-                                                    name="emergency_notes"
-                                                    defaultValue={payorToEdit?.emergencyGround?.notes || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    rows="2"
-                                                ></textarea>
-                                            </div>
-                                        </div>
-
-                                        {/* Non-Emergency Ground Transport */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Non-Emergency Ground Transport</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="nonemergency_phone"
-                                                        defaultValue={payorToEdit?.nonEmergencyGround?.phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="nonemergency_preauth"
-                                                        defaultChecked={payorToEdit?.nonEmergencyGround?.preauth_required || false}
-                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                    />
-                                                    <label className="ml-2 text-sm text-gray-700">Pre-authorization Required</label>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="nonemergency_preauth_phone"
-                                                        defaultValue={payorToEdit?.nonEmergencyGround?.preauth_phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Website</label>
-                                                    <input
-                                                        type="url"
-                                                        name="nonemergency_preauth_website"
-                                                        defaultValue={payorToEdit?.nonEmergencyGround?.preauth_website || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                                <textarea
-                                                    name="nonemergency_notes"
-                                                    defaultValue={payorToEdit?.nonEmergencyGround?.notes || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    rows="2"
-                                                ></textarea>
-                                            </div>
-                                        </div>
-
-                                        {/* Rotor Wing (Helicopter) */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Rotor Wing (Helicopter)</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="rotor_phone"
-                                                        defaultValue={payorToEdit?.rotorWing?.phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="rotor_preauth"
-                                                        defaultChecked={payorToEdit?.rotorWing?.preauth_required || false}
-                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                    />
-                                                    <label className="ml-2 text-sm text-gray-700">Pre-authorization Required</label>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="rotor_preauth_phone"
-                                                        defaultValue={payorToEdit?.rotorWing?.preauth_phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Website</label>
-                                                    <input
-                                                        type="url"
-                                                        name="rotor_preauth_website"
-                                                        defaultValue={payorToEdit?.rotorWing?.preauth_website || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                                <textarea
-                                                    name="rotor_notes"
-                                                    defaultValue={payorToEdit?.rotorWing?.notes || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    rows="2"
-                                                ></textarea>
-                                            </div>
-                                        </div>
-
-                                        {/* Fixed Wing (Airplane) */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">Fixed Wing (Airplane)</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="fixed_phone"
-                                                        defaultValue={payorToEdit?.fixedWing?.phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div className="flex items-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="fixed_preauth"
-                                                        defaultChecked={payorToEdit?.fixedWing?.preauth_required || false}
-                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                    />
-                                                    <label className="ml-2 text-sm text-gray-700">Pre-authorization Required</label>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Phone</label>
-                                                    <input
-                                                        type="text"
-                                                        name="fixed_preauth_phone"
-                                                        defaultValue={payorToEdit?.fixedWing?.preauth_phone || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pre-auth Website</label>
-                                                    <input
-                                                        type="url"
-                                                        name="fixed_preauth_website"
-                                                        defaultValue={payorToEdit?.fixedWing?.preauth_website || ''}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                                <textarea
-                                                    name="fixed_notes"
-                                                    defaultValue={payorToEdit?.fixedWing?.notes || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    rows="2"
-                                                ></textarea>
-                                            </div>
-                                        </div>
-
-                                        {/* General Notes */}
-                                        <div className="bg-gray-50 p-4 rounded-md">
-                                            <h3 className="font-medium text-gray-900 mb-3 text-lg">General Notes</h3>
-                                            <textarea
-                                                name="notes"
-                                                defaultValue={payorToEdit?.notes || ''}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                placeholder="Any additional information about this payor"
-                                                rows="4"
-                                            ></textarea>
-                                        </div>
-
-                                        {/* Form Actions */}
-                                        <div className="flex justify-end space-x-3 pt-4 border-t">
-                                            <button
-                                                type="button"
-                                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
-                                                onClick={() => {
-                                                    setShowAdmin(false);
-                                                    setPayorToEdit(null);
-                                                }}
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                                            >
-                                                {payorToEdit ? 'Update Payor' : 'Save Payor'}
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<EmergencyPortal />);
-</script>
-</body>
-</html>
+                                                        <h4 className="font-medium text-gray-900 mb-2">Rotor Wing</h4>
+                                                        {selectedPayor.rotorWing?.phone && (
+                                                            <p className="text-sm text-gray-600">Phone: <span className="font-mono text-blue-600">{selectedPayor.rotorWing.phone}
