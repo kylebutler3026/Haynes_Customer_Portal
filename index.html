@@ -1129,27 +1129,27 @@
                                                 number: formData.get('phone_number') || '', 
                                                 description: formData.get('phone_description') || '' 
                                             }],
-                                            contracted_service: '',
+                                            contracted_service: formData.get('contracted_service') || '',
                                             contractual_obligations: [],
-                                            er_entrance: '',
+                                            er_entrance: formData.get('er_entrance') || '',
                                             flight_program: {
-                                                isOneCall: false,
-                                                participating: false,
-                                                flightByGround: false,
-                                                notes: '',
+                                                isOneCall: formData.get('is_one_call') === 'on',
+                                                participating: formData.get('participating') === 'on',
+                                                flightByGround: formData.get('flight_by_ground') === 'on',
+                                                notes: formData.get('flight_notes') || '',
                                                 landingZones: []
                                             },
                                             backup_services: {
-                                                airServices: [],
-                                                groundServices: [],
-                                                noUnitsContact: '',
-                                                mutualAid: ''
+                                                airServices: formData.get('air_services') ? [{ name: formData.get('air_services'), phone: '', description: '' }] : [],
+                                                groundServices: formData.get('ground_services') ? [{ name: formData.get('ground_services'), phone: '', description: '' }] : [],
+                                                noUnitsContact: formData.get('no_units_contact') || '',
+                                                mutualAid: formData.get('mutual_aid') || ''
                                             },
                                             county_info: {
-                                                county: '',
-                                                sheriffAgencies: [],
-                                                fireAgencies: [],
-                                                emsAgencies: []
+                                                county: formData.get('county') || '',
+                                                sheriffAgencies: formData.get('sheriff_agencies') ? [{ name: formData.get('sheriff_agencies'), phone: '', description: '' }] : [],
+                                                fireAgencies: formData.get('fire_agencies') ? [{ name: formData.get('fire_agencies'), phone: '', description: '' }] : [],
+                                                emsAgencies: formData.get('ems_agencies') ? [{ name: formData.get('ems_agencies'), phone: '', description: '' }] : []
                                             },
                                             notes: formData.get('notes') || '',
                                             id: entityToEdit?.id
