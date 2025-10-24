@@ -103,7 +103,12 @@ try {
 const { data, error } = await supabase
 .from('emergency_entities')
 .select('*')
-.order('created_at', { ascending: true });
+.order('name', { ascending: true })
+
+.order('name', { ascending: true })
+
+.order('name', { ascending: true })
+
 
 if (error) {
 console.error('Error loading entities:', error);
@@ -1485,7 +1490,7 @@ value={formData.type}
 onChange={(e) => handleChange('type', e.target.value)}
 required
 >
-<option value="commercial">Commercial</option>
+<option value="commercial">Commercial Insurance</option>
 <option value="medicare">Medicare</option>
 <option value="medicaid">Medicaid</option>
 <option value="government">Government</option>
@@ -2709,6 +2714,9 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<EmergencyPortal />);
 </script>
 </body>
+    <footer>
+        <small>&copy; 2025 Kyle Butler/Haynes Ambulance. All rights reserved.</small>
+    </footer>
 </html>
 
 
