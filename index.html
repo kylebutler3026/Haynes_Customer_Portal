@@ -1382,7 +1382,7 @@ const PayorForm = ({ payor, onSave, onCancel }) => {
 const [formData, setFormData] = useState({
 id: payor?.id || null,
 name: payor?.name || '',
-type: payor?.type || 'insurance',
+type: payor?.type || 'commercial',
 website: payor?.website || '',
 phone_numbers: payor?.phoneNumbers || [{ label: '', number: '', description: '' }],
 emergency_ground: payor?.emergencyGround || { phone: '', preauth_required: false, notes: '' },
