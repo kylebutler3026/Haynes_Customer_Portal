@@ -913,24 +913,75 @@ className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transit
 );
 };
 
-// Payor Form Component (simplified version)
+// Payor Form Component - Full version
 const PayorForm = ({ payor, onSave, onCancel }) => {
 const [formData, setFormData] = useState({
 id: payor?.id || null,
 name: payor?.name || '',
 type: payor?.type || 'commercial',
 website: payor?.website || '',
-phone_numbers: payor?.phoneNumbers || [{ label: '', number: '', description: '' }],
+phone_numbers: payor?.phoneNumbers && payor.phoneNumbers.length > 0 
+? payor.phoneNumbers 
+: [{ label: '', number: '', description: '' }],
 emergency_ground: payor?.emergencyGround || { phone: '', preauth_required: false, notes: '' },
 non_emergency_ground: payor?.nonEmergencyGround || { phone: '', preauth_required: false, notes: '' },
 rotor_wing: payor?.rotorWing || { phone: '', preauth_required: false, notes: '' },
 fixed_wing: payor?.fixedWing || { phone: '', preauth_required: false, notes: '' },
-reference_links: payor?.referenceLinks || [{ title: '', url: '', description: '' }],
+reference_links: payor?.referenceLinks && payor.referenceLinks.length > 0 
+? payor.referenceLinks 
+: [{ title: '', url: '', description: '' }],
 notes: payor?.notes || ''
 });
 
 const handleChange = (field, value) => {
 setFormData(prev => ({ ...prev, [field]: value }));
+};
+
+const handleServiceChange = (serviceType, field, value) => {
+setFormData(prev => ({
+...prev,
+[serviceType]: { ...prev[serviceType], [field]: value }
+}));
+};
+
+const handlePhoneChange = (index, field, value) => {
+const newPhones = [...formData.phone_numbers];
+newPhones[index] = { ...newPhones[index], [field]: value };
+setFormData(prev => ({ ...prev, phone_numbers: newPhones }));
+};
+
+const addPhoneField = () => {
+setFormData(prev => ({
+...prev,
+phone_numbers: [...prev.phone_numbers, { label: '', number: '', description: '' }]
+}));
+};
+
+const removePhoneField = (index) => {
+if (formData.phone_numbers.length <= 1) return;
+const newPhones = [...formData.phone_numbers];
+newPhones.splice(index, 1);
+setFormData(prev => ({ ...prev, phone_numbers: newPhones }));
+};
+
+const handleLinkChange = (index, field, value) => {
+const newLinks = [...formData.reference_links];
+newLinks[index] = { ...newLinks[index], [field]: value };
+setFormData(prev => ({ ...prev, reference_links: newLinks }));
+};
+
+const addLinkField = () => {
+setFormData(prev => ({
+...prev,
+reference_links: [...prev.reference_links, { title: '', url: '', description: '' }]
+}));
+};
+
+const removeLinkField = (index) => {
+if (formData.reference_links.length <= 1) return;
+const newLinks = [...formData.reference_links];
+newLinks.splice(index, 1);
+setFormData(prev => ({ ...prev, reference_links: newLinks }));
 };
 
 const handleSubmit = (e) => {
@@ -957,6 +1008,7 @@ className={`p-2 rounded-full ${darkMode ? 'text-gray-400 hover:text-gray-300 hov
 </button>
 </div>
 <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+{/* Basic Information */}
 <div>
 <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Basic Information</h3>
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -984,8 +1036,178 @@ required
 <option value="government">Government</option>
 </select>
 </div>
+<div className="md:col-span-2">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Website</label>
+<input
+type="url"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={formData.website}
+onChange={(e) => handleChange('website', e.target.value)}
+placeholder="https://example.com"
+/>
 </div>
 </div>
+</div>
+
+{/* Phone Numbers */}
+<div>
+<div className="flex justify-between items-center mb-3">
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} text-lg border-b ${borderClass} pb-2`}>Phone Numbers</h3>
+<button
+type="button"
+onClick={addPhoneField}
+className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
+>
+<Icon type="plus" className="mr-1" /> Add
+</button>
+</div>
+<div className="space-y-3">
+{formData.phone_numbers.map((phone, index) => (
+<div key={index} className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-end ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
+<div className="md:col-span-3">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Label</label>
+<input type="text" className={`w-full px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={phone.label} onChange={(e) => handlePhoneChange(index, 'label', e.target.value)} placeholder="e.g., Main" />
+</div>
+<div className="md:col-span-4">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Number</label>
+<input type="text" className={`w-full px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={phone.number} onChange={(e) => handlePhoneChange(index, 'number', e.target.value)} />
+</div>
+<div className="md:col-span-4">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Description</label>
+<input type="text" className={`w-full px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={phone.description} onChange={(e) => handlePhoneChange(index, 'description', e.target.value)} />
+</div>
+<div className="md:col-span-1">
+{formData.phone_numbers.length > 1 && <button type="button" onClick={() => removePhoneField(index)} className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"><Icon type="trash" /></button>}
+</div>
+</div>
+))}
+</div>
+</div>
+
+{/* Emergency Ground */}
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Emergency Ground Transport</h3>
+<div className="space-y-3">
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Phone</label>
+<input type="text" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.emergency_ground.phone} onChange={(e) => handleServiceChange('emergency_ground', 'phone', e.target.value)} />
+</div>
+<div className="flex items-center">
+<input type="checkbox" id="emerg_preauth" className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500" checked={formData.emergency_ground.preauth_required} onChange={(e) => handleServiceChange('emergency_ground', 'preauth_required', e.target.checked)} />
+<label htmlFor="emerg_preauth" className={`ml-2 block text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Pre-authorization Required</label>
+</div>
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Notes</label>
+<textarea rows="2" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.emergency_ground.notes} onChange={(e) => handleServiceChange('emergency_ground', 'notes', e.target.value)} />
+</div>
+</div>
+</div>
+
+{/* Non-Emergency Ground */}
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Non-Emergency Ground Transport</h3>
+<div className="space-y-3">
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Phone</label>
+<input type="text" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.non_emergency_ground.phone} onChange={(e) => handleServiceChange('non_emergency_ground', 'phone', e.target.value)} />
+</div>
+<div className="flex items-center">
+<input type="checkbox" id="nonemerg_preauth" className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500" checked={formData.non_emergency_ground.preauth_required} onChange={(e) => handleServiceChange('non_emergency_ground', 'preauth_required', e.target.checked)} />
+<label htmlFor="nonemerg_preauth" className={`ml-2 block text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Pre-authorization Required</label>
+</div>
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Notes</label>
+<textarea rows="2" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.non_emergency_ground.notes} onChange={(e) => handleServiceChange('non_emergency_ground', 'notes', e.target.value)} />
+</div>
+</div>
+</div>
+
+{/* Rotor Wing */}
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Rotor Wing (Helicopter)</h3>
+<div className="space-y-3">
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Phone</label>
+<input type="text" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.rotor_wing.phone} onChange={(e) => handleServiceChange('rotor_wing', 'phone', e.target.value)} />
+</div>
+<div className="flex items-center">
+<input type="checkbox" id="rotor_preauth" className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500" checked={formData.rotor_wing.preauth_required} onChange={(e) => handleServiceChange('rotor_wing', 'preauth_required', e.target.checked)} />
+<label htmlFor="rotor_preauth" className={`ml-2 block text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Pre-authorization Required</label>
+</div>
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Notes</label>
+<textarea rows="2" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.rotor_wing.notes} onChange={(e) => handleServiceChange('rotor_wing', 'notes', e.target.value)} />
+</div>
+</div>
+</div>
+
+{/* Fixed Wing */}
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Fixed Wing (Airplane)</h3>
+<div className="space-y-3">
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Phone</label>
+<input type="text" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.fixed_wing.phone} onChange={(e) => handleServiceChange('fixed_wing', 'phone', e.target.value)} />
+</div>
+<div className="flex items-center">
+<input type="checkbox" id="fixed_preauth" className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500" checked={formData.fixed_wing.preauth_required} onChange={(e) => handleServiceChange('fixed_wing', 'preauth_required', e.target.checked)} />
+<label htmlFor="fixed_preauth" className={`ml-2 block text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Pre-authorization Required</label>
+</div>
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Notes</label>
+<textarea rows="2" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.fixed_wing.notes} onChange={(e) => handleServiceChange('fixed_wing', 'notes', e.target.value)} />
+</div>
+</div>
+</div>
+
+{/* Reference Links */}
+<div>
+<div className="flex justify-between items-center mb-3">
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} text-lg border-b ${borderClass} pb-2`}>Reference Links</h3>
+<button
+type="button"
+onClick={addLinkField}
+className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
+>
+<Icon type="plus" className="mr-1" /> Add
+</button>
+</div>
+<div className="space-y-3">
+{formData.reference_links.map((link, index) => (
+<div key={index} className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-end ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
+<div className="md:col-span-3">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Title</label>
+<input type="text" className={`w-full px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={link.title} onChange={(e) => handleLinkChange(index, 'title', e.target.value)} />
+</div>
+<div className="md:col-span-5">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>URL</label>
+<input type="url" className={`w-full px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={link.url} onChange={(e) => handleLinkChange(index, 'url', e.target.value)} placeholder="https://example.com" />
+</div>
+<div className="md:col-span-3">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Description</label>
+<input type="text" className={`w-full px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={link.description} onChange={(e) => handleLinkChange(index, 'description', e.target.value)} />
+</div>
+<div className="md:col-span-1">
+{formData.reference_links.length > 1 && <button type="button" onClick={() => removeLinkField(index)} className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"><Icon type="trash" /></button>}
+</div>
+</div>
+))}
+</div>
+</div>
+
+{/* General Notes */}
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>General Notes</h3>
+<textarea
+rows="4"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={formData.notes}
+onChange={(e) => handleChange('notes', e.target.value)}
+placeholder="Any additional notes about this payor"
+/>
+</div>
+
+{/* Form Actions */}
 <div className={`flex justify-end space-x-3 pt-4 border-t ${borderClass}`}>
 <button
 type="button"
