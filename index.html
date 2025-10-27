@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -45,6 +44,14 @@ transition: all 0.2s ease;
 transform: translateY(-2px);
 box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
+
+.collapse-icon {
+transition: transform 0.2s ease;
+}
+
+.collapse-icon.collapsed {
+transform: rotate(-90deg);
+}
 </style>
 
 <script type="text/babel">
@@ -79,7 +86,8 @@ dispatch: "📢",
 globe: "🌐",
 tag: "🏷️",
 moon: "🌙",
-sun: "☀️"
+sun: "☀️",
+chevron: "▼"
 };
 return <span className={className}>{icons[type] || "❓"}</span>;
 };
@@ -106,6 +114,24 @@ const [entityToEdit, setEntityToEdit] = useState(null);
 const [payorToEdit, setPayorToEdit] = useState(null);
 const [directorToEdit, setDirectorToEdit] = useState(null);
 const [darkMode, setDarkMode] = useState(false);
+const [collapsedGroups, setCollapsedGroups] = useState({});
+const [collapsedDirectorGroups, setCollapsedDirectorGroups] = useState({});
+
+// Toggle collapse state for entity groups
+const toggleEntityGroup = (groupType) => {
+setCollapsedGroups(prev => ({
+...prev,
+[groupType]: !prev[groupType]
+}));
+};
+
+// Toggle collapse state for director groups
+const toggleDirectorGroup = (groupType) => {
+setCollapsedDirectorGroups(prev => ({
+...prev,
+[groupType]: !prev[groupType]
+}));
+};
 
 // Load entities from Supabase
 const loadEntities = useCallback(async () => {
@@ -1229,7 +1255,7 @@ className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transit
 );
 };
 
-// Entity Form Component (keeping original intact - abbreviated for length)
+// Entity Form Component
 const EntityForm = ({ entity, onSave, onCancel }) => {
 const [formData, setFormData] = useState({
 id: entity?.id || null,
@@ -2304,11 +2330,16 @@ loading ? (
 {Object.entries(groupedEntities).length > 0 ? (
 Object.entries(groupedEntities).map(([type, typeEntities]) => (
 <div key={type} className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden`}>
-<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-4 py-3 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-<h2 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-900'} capitalize`}>
+<div 
+className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-4 py-3 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'} cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-between`}
+onClick={() => toggleEntityGroup(type)}
+>
+<h2 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-900'} capitalize flex-1`}>
 {type.replace('_', ' ')}s ({typeEntities.length})
 </h2>
+<Icon type="chevron" className={`collapse-icon ${collapsedGroups[type] ? 'collapsed' : ''}`} />
 </div>
+{!collapsedGroups[type] && (
 <ul className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
 {typeEntities.map(entity => (
 <li
@@ -2356,6 +2387,7 @@ handleDeleteEntity(entity.id);
 </li>
 ))}
 </ul>
+)}
 </div>
 ))
 ) : (
@@ -2560,54 +2592,54 @@ Known Landing Zones
 )}
 
 {/* County Information */}
-   {selectedEntity.countyInfo && (selectedEntity.countyInfo.county || (selectedEntity.countyInfo.sheriffAgencies && selectedEntity.countyInfo.sheriffAgencies.length > 0) || (selectedEntity.countyInfo.fireAgencies && selectedEntity.countyInfo.fireAgencies.length > 0) || (selectedEntity.countyInfo.emsAgencies && selectedEntity.countyInfo.emsAgencies.length > 0)) && (
-   <div>
-   <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>County Information</h3>
-   <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md space-y-3`}>
-   {selectedEntity.countyInfo.county && (
-   <div>
-   <p className={`font-medium ${darkMode ? 'text-blue-300' : 'text-blue-600'}`}>{selectedEntity.countyInfo.county}</p>
-   </div>
-   )}
-   {selectedEntity.countyInfo.sheriffAgencies && selectedEntity.countyInfo.sheriffAgencies.length > 0 && selectedEntity.countyInfo.sheriffAgencies[0].name && (
-   <div>
-   <p className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Sheriff Agencies</p>
-   <div className="space-y-1">
-   {selectedEntity.countyInfo.sheriffAgencies.map((agency, idx) => agency.name && (
-   <div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-   {agency.name} {agency.phone && `- ${agency.phone}`}
-   </div>
-   ))}
-   </div>
-   </div>
-   )}
-   {selectedEntity.countyInfo.fireAgencies && selectedEntity.countyInfo.fireAgencies.length > 0 && selectedEntity.countyInfo.fireAgencies[0].name && (
-   <div>
-   <p className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Fire Agencies</p>
-   <div className="space-y-1">
-   {selectedEntity.countyInfo.fireAgencies.map((agency, idx) => agency.name && (
-   <div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-   {agency.name} {agency.phone && `- ${agency.phone}`}
-   </div>
-   ))}
-   </div>
-   </div>
-   )}
-   {selectedEntity.countyInfo.emsAgencies && selectedEntity.countyInfo.emsAgencies.length > 0 && selectedEntity.countyInfo.emsAgencies[0].name && (
-   <div>
-   <p className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>EMS Agencies</p>
-   <div className="space-y-1">
-   {selectedEntity.countyInfo.emsAgencies.map((agency, idx) => agency.name && (
-   <div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-   {agency.name} {agency.phone && `- ${agency.phone}`}
-   </div>
-   ))}
-   </div>
-   </div>
-   )}
-   </div>
-   </div>
-   )}
+{selectedEntity.countyInfo && (selectedEntity.countyInfo.county || (selectedEntity.countyInfo.sheriffAgencies && selectedEntity.countyInfo.sheriffAgencies.length > 0) || (selectedEntity.countyInfo.fireAgencies && selectedEntity.countyInfo.fireAgencies.length > 0) || (selectedEntity.countyInfo.emsAgencies && selectedEntity.countyInfo.emsAgencies.length > 0)) && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>County Information</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md space-y-3`}>
+{selectedEntity.countyInfo.county && (
+<div>
+<p className={`font-medium ${darkMode ? 'text-blue-300' : 'text-blue-600'}`}>{selectedEntity.countyInfo.county}</p>
+</div>
+)}
+{selectedEntity.countyInfo.sheriffAgencies && selectedEntity.countyInfo.sheriffAgencies.length > 0 && selectedEntity.countyInfo.sheriffAgencies[0].name && (
+<div>
+<p className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Sheriff Agencies</p>
+<div className="space-y-1">
+{selectedEntity.countyInfo.sheriffAgencies.map((agency, idx) => agency.name && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+{agency.name} {agency.phone && `- ${agency.phone}`}
+</div>
+))}
+</div>
+</div>
+)}
+{selectedEntity.countyInfo.fireAgencies && selectedEntity.countyInfo.fireAgencies.length > 0 && selectedEntity.countyInfo.fireAgencies[0].name && (
+<div>
+<p className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Fire Agencies</p>
+<div className="space-y-1">
+{selectedEntity.countyInfo.fireAgencies.map((agency, idx) => agency.name && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+{agency.name} {agency.phone && `- ${agency.phone}`}
+</div>
+))}
+</div>
+</div>
+)}
+{selectedEntity.countyInfo.emsAgencies && selectedEntity.countyInfo.emsAgencies.length > 0 && selectedEntity.countyInfo.emsAgencies[0].name && (
+<div>
+<p className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>EMS Agencies</p>
+<div className="space-y-1">
+{selectedEntity.countyInfo.emsAgencies.map((agency, idx) => agency.name && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+{agency.name} {agency.phone && `- ${agency.phone}`}
+</div>
+))}
+</div>
+</div>
+)}
+</div>
+</div>
+)}
 
 {/* Notes */}
 {selectedEntity.notes && (
@@ -2920,11 +2952,16 @@ directorsLoading ? (
 {Object.entries(groupedDirectors).length > 0 ? (
 Object.entries(groupedDirectors).map(([type, typeDirectors]) => (
 <div key={type} className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden`}>
-<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-4 py-3 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-<h2 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+<div 
+className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-4 py-3 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'} cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-between`}
+onClick={() => toggleDirectorGroup(type)}
+>
+<h2 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-900'} flex-1`}>
 {type} ({typeDirectors.length})
 </h2>
+<Icon type="chevron" className={`collapse-icon ${collapsedDirectorGroups[type] ? 'collapsed' : ''}`} />
 </div>
+{!collapsedDirectorGroups[type] && (
 <ul className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
 {typeDirectors.map(director => (
 <li
@@ -2967,6 +3004,7 @@ handleDeleteDirector(director.id);
 </li>
 ))}
 </ul>
+)}
 </div>
 ))
 ) : (
