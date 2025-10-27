@@ -218,7 +218,7 @@ setPayorsLoading(false);
 const loadDirectors = useCallback(async () => {
 try {
 const { data, error } = await supabase
-.from('directort_contacts')
+.from('directory_contacts')
 .select('*')
 .order('name', { ascending: true });
 
@@ -278,11 +278,11 @@ loadPayors();
 .subscribe();
 
 const directorsSubscription = supabase
-.channel('directort_contacts_changes')
+.channel('directory_contacts_changes')
 .on('postgres_changes', { 
 event: '*', 
 schema: 'public', 
-table: 'directort_contacts' 
+table: 'directory_contacts' 
 }, payload => {
 loadDirectors();
 })
@@ -433,7 +433,7 @@ notes: formData.notes
 
 if (formData.id) {
 const { data, error } = await supabase
-.from('directort_contacts')
+.from('directory_contacts')
 .update(directorToSave)
 .eq('id', formData.id)
 .select();
@@ -446,7 +446,7 @@ return;
 setDirectorToEdit(null);
 } else {
 const { data, error } = await supabase
-.from('directort_contacts')
+.from('directory_contacts')
 .insert([directorToSave])
 .select();
 
@@ -512,7 +512,7 @@ const handleDeleteDirector = async (directorId) => {
 if (confirm('Are you sure you want to delete this director?')) {
 try {
 const { error } = await supabase
-.from('directort_contacts')
+.from('directory_contacts')
 .delete()
 .eq('id', directorId);
 
