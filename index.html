@@ -1877,22 +1877,234 @@ onClick={() => setSelectedPayor(payor)}
 
 <div className="md:col-span-2">
 {selectedPayor ? (
-<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6`}>
-<div className={`flex justify-between items-center mb-4 pb-3 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden`}>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-6 py-4 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'} flex justify-between items-center`}>
 <div>
 <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedPayor.name}</h2>
 <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} capitalize mt-1`}>{selectedPayor.type?.replace('_', ' ')}</p>
 </div>
 {isAdminAuthenticated && (
 <div className="flex space-x-2">
-<button className={`px-3 py-1.5 rounded-md flex items-center transition-colors ${darkMode ? 'bg-blue-700 text-blue-100 hover:bg-blue-600' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`} onClick={() => handleEditPayor(selectedPayor)}><Icon type="edit" className="mr-1" /> Edit</button>
-<button className={`px-3 py-1.5 rounded-md flex items-center transition-colors ${darkMode ? 'bg-red-700 text-red-100 hover:bg-red-600' : 'bg-red-100 text-red-600 hover:bg-red-200'}`} onClick={() => handleDeletePayor(selectedPayor.id)}><Icon type="trash" className="mr-1" /> Delete</button>
+<button
+className={`px-3 py-1.5 rounded-md flex items-center transition-colors ${darkMode ? 'bg-blue-700 text-blue-100 hover:bg-blue-600' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
+onClick={() => handleEditPayor(selectedPayor)}
+>
+<Icon type="edit" className="mr-1" /> Edit
+</button>
+<button
+className={`px-3 py-1.5 rounded-md flex items-center transition-colors ${darkMode ? 'bg-red-700 text-red-100 hover:bg-red-600' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+onClick={() => handleDeletePayor(selectedPayor.id)}
+>
+<Icon type="trash" className="mr-1" /> Delete
+</button>
 </div>
 )}
 </div>
-<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md`}>
-<p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Type</p>
+<div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+{/* Basic Information */}
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md shadow-sm`}>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center text-lg`}>
+<Icon type="building" className="mr-2" />
+Basic Information
+</h3>
+<div className="space-y-3">
+<div className="flex items-start">
+<div className="w-8 flex-shrink-0 flex justify-center">
+<Icon type="tag" />
+</div>
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Type</p>
 <p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'} capitalize`}>{selectedPayor.type?.replace('_', ' ')}</p>
+</div>
+</div>
+{selectedPayor.website && (
+<div className="flex items-start">
+<div className="w-8 flex-shrink-0 flex justify-center">
+<Icon type="globe" />
+</div>
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Website</p>
+<a 
+href={selectedPayor.website} 
+target="_blank" 
+rel="noopener noreferrer"
+className="text-blue-600 hover:text-blue-800 underline break-all"
+>
+{selectedPayor.website}
+</a>
+</div>
+</div>
+)}
+</div>
+</div>
+
+{/* Phone Numbers */}
+{selectedPayor.phoneNumbers && selectedPayor.phoneNumbers.length > 0 && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center text-lg`}>
+<Icon type="phone" className="mr-2" />
+Phone Numbers
+</h3>
+<div className="space-y-2">
+{selectedPayor.phoneNumbers.map((phone, index) => (
+<div key={index} className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
+<div className="flex justify-between items-center mb-1">
+<span className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{phone.label || 'Phone'}</span>
+<span className="font-mono text-blue-600">{phone.number}</span>
+</div>
+{phone.description && (
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{phone.description}</p>
+)}
+</div>
+))}
+</div>
+</div>
+)}
+
+{/* Emergency Ground */}
+{selectedPayor.emergencyGround && (selectedPayor.emergencyGround.phone || selectedPayor.emergencyGround.preauth_required || selectedPayor.emergencyGround.notes) && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3`}>Emergency Ground Transport</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md space-y-2`}>
+{selectedPayor.emergencyGround.phone && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Phone</p>
+<p className={`font-mono text-blue-600`}>{selectedPayor.emergencyGround.phone}</p>
+</div>
+)}
+{selectedPayor.emergencyGround.preauth_required && (
+<div className="flex items-center text-orange-600">
+<span className="mr-2">⚠️</span> Pre-authorization Required
+</div>
+)}
+{selectedPayor.emergencyGround.notes && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notes</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedPayor.emergencyGround.notes}</p>
+</div>
+)}
+</div>
+</div>
+)}
+
+{/* Non-Emergency Ground */}
+{selectedPayor.nonEmergencyGround && (selectedPayor.nonEmergencyGround.phone || selectedPayor.nonEmergencyGround.preauth_required || selectedPayor.nonEmergencyGround.notes) && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3`}>Non-Emergency Ground Transport</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md space-y-2`}>
+{selectedPayor.nonEmergencyGround.phone && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Phone</p>
+<p className={`font-mono text-blue-600`}>{selectedPayor.nonEmergencyGround.phone}</p>
+</div>
+)}
+{selectedPayor.nonEmergencyGround.preauth_required && (
+<div className="flex items-center text-orange-600">
+<span className="mr-2">⚠️</span> Pre-authorization Required
+</div>
+)}
+{selectedPayor.nonEmergencyGround.notes && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notes</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedPayor.nonEmergencyGround.notes}</p>
+</div>
+)}
+</div>
+</div>
+)}
+
+{/* Rotor Wing */}
+{selectedPayor.rotorWing && (selectedPayor.rotorWing.phone || selectedPayor.rotorWing.preauth_required || selectedPayor.rotorWing.notes) && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center`}>
+<Icon type="plane" className="mr-2" />
+Rotor Wing (Helicopter)
+</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md space-y-2`}>
+{selectedPayor.rotorWing.phone && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Phone</p>
+<p className={`font-mono text-blue-600`}>{selectedPayor.rotorWing.phone}</p>
+</div>
+)}
+{selectedPayor.rotorWing.preauth_required && (
+<div className="flex items-center text-orange-600">
+<span className="mr-2">⚠️</span> Pre-authorization Required
+</div>
+)}
+{selectedPayor.rotorWing.notes && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notes</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedPayor.rotorWing.notes}</p>
+</div>
+)}
+</div>
+</div>
+)}
+
+{/* Fixed Wing */}
+{selectedPayor.fixedWing && (selectedPayor.fixedWing.phone || selectedPayor.fixedWing.preauth_required || selectedPayor.fixedWing.notes) && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center`}>
+<Icon type="plane" className="mr-2" />
+Fixed Wing (Airplane)
+</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md space-y-2`}>
+{selectedPayor.fixedWing.phone && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Phone</p>
+<p className={`font-mono text-blue-600`}>{selectedPayor.fixedWing.phone}</p>
+</div>
+)}
+{selectedPayor.fixedWing.preauth_required && (
+<div className="flex items-center text-orange-600">
+<span className="mr-2">⚠️</span> Pre-authorization Required
+</div>
+)}
+{selectedPayor.fixedWing.notes && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notes</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedPayor.fixedWing.notes}</p>
+</div>
+)}
+</div>
+</div>
+)}
+
+{/* Reference Links */}
+{selectedPayor.referenceLinks && selectedPayor.referenceLinks.length > 0 && selectedPayor.referenceLinks[0].url && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center`}>
+<Icon type="globe" className="mr-2" />
+Reference Links
+</h3>
+<div className="space-y-2">
+{selectedPayor.referenceLinks.map((link, idx) => link.url && (
+<div key={idx} className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
+<a 
+href={link.url} 
+target="_blank" 
+rel="noopener noreferrer"
+className="text-blue-600 hover:text-blue-800 underline font-medium break-all"
+>
+{link.title || link.url}
+</a>
+{link.description && (
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>{link.description}</p>
+)}
+</div>
+))}
+</div>
+</div>
+)}
+
+{/* Notes */}
+{selectedPayor.notes && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Notes</h3>
+<p className={`${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-50 text-gray-700'} p-3 rounded-md whitespace-pre-wrap`}>{selectedPayor.notes}</p>
+</div>
+)}
 </div>
 </div>
 ) : (
