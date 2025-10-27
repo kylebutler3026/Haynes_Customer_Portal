@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Emergency Services Portal</title>
+<title>Haynes Communications Dispatch Reference Portal</title>
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1320,7 +1320,7 @@ return (
 <div className={`min-h-screen ${darkMode ? 'gradient-bg-dark' : 'gradient-bg'} flex items-center justify-center p-4`}>
 <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-8 rounded-lg shadow-xl max-w-md w-full`}>
 <div className="text-center mb-8">
-<h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Emergency Services Portal</h1>
+<h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Haynes Communications Dispatch Reference Portal</h1>
 <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Please enter your password to access the portal</p>
 </div>
 <form onSubmit={(e) => {
@@ -1349,7 +1349,7 @@ Access Portal
 </button>
 </form>
 <div className={`mt-6 text-center text-sm ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-<p>© 2025 Emergency Services Portal. All rights reserved.</p>
+<p>© 2025 Haynes Communications. All rights reserved.</p>
 </div>
 </div>
 </div>
@@ -1361,7 +1361,7 @@ return (
 {/* Header */}
 <header className={`${darkMode ? 'bg-gray-800 shadow-lg' : 'bg-white shadow-sm'}`}>
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-<h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Emergency Services Portal</h1>
+<h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Haynes Communications Dispatch Reference Portal</h1>
 <div className="flex items-center space-x-4">
 {lastSync && (
 <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'} flex items-center`}>
@@ -1467,7 +1467,8 @@ Directory/Contacts ({directors.length})
 <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 {/* Search Bar */}
 <div className="mb-6">
-<div className="relative">
+<div className="flex gap-3">
+<div className="relative flex-1">
 <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${darkMode ? 'text-gray-400' : ''}`}>
 <Icon type="search" />
 </div>
@@ -1485,6 +1486,28 @@ activeTab === 'insurance' ?
 value={searchTerm}
 onChange={(e) => setSearchTerm(e.target.value)}
 />
+</div>
+<button
+onClick={() => {
+if (activeTab === 'entities') {
+setLoading(true);
+loadEntities();
+} else if (activeTab === 'insurance') {
+setPayorsLoading(true);
+loadPayors();
+} else {
+setDirectorsLoading(true);
+loadDirectors();
+}
+}}
+className={`px-4 py-3 rounded-md hover:bg-opacity-90 transition-colors flex items-center font-medium ${
+darkMode ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-green-600 text-white hover:bg-green-700'
+}`}
+title="Refresh current tab"
+>
+<Icon type="sync" className="mr-2" />
+Refresh
+</button>
 </div>
 </div>
 
@@ -2095,6 +2118,6 @@ root.render(<EmergencyPortal />);
 </script>
 </body>
 <footer>
-<small>&copy; 2025 Kyle Butler/CARE Ambulance. All rights reserved.</small>
+<small>&copy; 2025 Haynes Communications Dispatch Reference Portal. All rights reserved.</small>
 </footer>
 </html>
