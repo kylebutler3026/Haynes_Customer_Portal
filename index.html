@@ -421,14 +421,14 @@ alert('Error saving payor. Please try again.');
 const handleSaveNewDirector = async (formData) => {
 try {
 const directorToSave = {
-name: formData.name,
-title: formData.title,
-department: formData.department,
-type: formData.type,
-phone_numbers: formData.phone_numbers,
-extensions: formData.extensions,
-email: formData.email,
-notes: formData.notes
+name: formData.name.trim(),
+title: formData.title.trim(),
+department: formData.department.trim(),
+type: formData.type || 'Internal',
+phone_numbers: formData.phone_numbers.filter(p => p.number),
+extensions: formData.extensions.filter(e => e.number),
+email: formData.email.trim(),
+notes: formData.notes.trim()
 };
 
 if (formData.id) {
