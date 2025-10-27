@@ -2194,19 +2194,6 @@ handleDeleteEntity(entity.id);
 </div>
 )}
 
-{/* Right Panel - Entity Details */}
-<div className={`${leftPanelCollapsed ? 'md:col-span-1 col-span-1' : 'md:col-span-2'}`}>
-<div className="flex items-center gap-2 mb-4">
-<button
-onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-className={`px-3 py-2 rounded-md transition-colors flex items-center ${
-darkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-}`}
-title={leftPanelCollapsed ? "Show list" : "Hide list"}
->
-{leftPanelCollapsed ? "◀ Show List" : "▶ Hide List"}
-</button>
-</div>
 {selectedEntity ? (
 <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden`}>
 <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-6 py-4 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'} flex justify-between items-center`}>
@@ -2231,6 +2218,228 @@ onClick={() => handleDeleteEntity(selectedEntity.id)}
 </div>
 </div>
 <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+{/* Basic Information */}
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md shadow-sm`}>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center text-lg`}>
+<Icon type="building" className="mr-2" />
+Basic Information
+</h3>
+<div className="space-y-3">
+<div className="flex items-start">
+<div className="w-8 flex-shrink-0 flex justify-center">
+<Icon type="building" />
+</div>
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Type</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'} capitalize`}>{selectedEntity.type.replace('_', ' ')}</p>
+</div>
+</div>
+<div className="flex items-start">
+<div className="w-8 flex-shrink-0 flex justify-center">
+<Icon type="map" />
+</div>
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Address</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedEntity.address || 'Not specified'}</p>
+</div>
+</div>
+<div className="flex items-start">
+<div className="w-8 flex-shrink-0 flex justify-center">
+<Icon type="calendar" />
+</div>
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Last Contact</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedEntity.lastContact || 'Not recorded'}</p>
+</div>
+</div>
+</div>
+</div>
+
+{/* Phone Numbers */}
+{selectedEntity.phoneNumbers && selectedEntity.phoneNumbers.length > 0 && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center text-lg`}>
+<Icon type="phone" className="mr-2" />
+Contact Information
+</h3>
+<div className="space-y-2">
+{selectedEntity.phoneNumbers.map((phone, index) => (
+<div key={index} className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
+<div className="flex justify-between items-center mb-1">
+<span className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{phone.label || 'Unlabeled'}</span>
+<span className="font-mono text-blue-600">{phone.number}</span>
+</div>
+{phone.description && (
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{phone.description}</p>
+)}
+</div>
+))}
+</div>
+</div>
+)}
+
+{/* Contracted Service */}
+{selectedEntity.contractedService && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Contracted Service</h3>
+<p className={`${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-50 text-gray-700'} p-3 rounded-md`}>{selectedEntity.contractedService}</p>
+</div>
+)}
+
+{/* ER Entrance */}
+{selectedEntity.erEntrance && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>ER Entrance</h3>
+<p className={`${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-50 text-gray-700'} p-3 rounded-md whitespace-pre-wrap`}>{selectedEntity.erEntrance}</p>
+</div>
+)}
+
+{/* Flight Program */}
+{selectedEntity.flightProgram && (selectedEntity.flightProgram.isOneCall || selectedEntity.flightProgram.participating || selectedEntity.flightProgram.flightByGround) && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2 flex items-center`}>
+<Icon type="plane" className="mr-2" />
+Flight Program
+</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md space-y-2`}>
+{selectedEntity.flightProgram.isOneCall && <div className="flex items-center"><span className="text-green-600 mr-2">✓</span> One Call</div>}
+{selectedEntity.flightProgram.participating && <div className="flex items-center"><span className="text-green-600 mr-2">✓</span> Participating</div>}
+{selectedEntity.flightProgram.flightByGround && <div className="flex items-center"><span className="text-green-600 mr-2">✓</span> Flight By Ground</div>}
+{selectedEntity.flightProgram.notes && <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{selectedEntity.flightProgram.notes}</p>}
+</div>
+</div>
+)}
+
+{/* Backup Services */}
+{selectedEntity.backupServices && (selectedEntity.backupServices.airServices.length > 0 || selectedEntity.backupServices.groundServices.length > 0) && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Backup Services</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md space-y-3`}>
+{selectedEntity.backupServices.airServices.length > 0 && (
+<div>
+<p className={`font-medium ${darkMode ? 'text-blue-300' : 'text-blue-600'} mb-2`}>Air Services</p>
+<div className="space-y-1">
+{selectedEntity.backupServices.airServices.map((svc, idx) => svc.name && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+{svc.name} {svc.phone && `- ${svc.phone}`}
+</div>
+))}
+</div>
+</div>
+)}
+{selectedEntity.backupServices.groundServices.length > 0 && (
+<div>
+<p className={`font-medium ${darkMode ? 'text-blue-300' : 'text-blue-600'} mb-2`}>Ground Services</p>
+<div className="space-y-1">
+{selectedEntity.backupServices.groundServices.map((svc, idx) => svc.name && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+{svc.name} {svc.phone && `- ${svc.phone}`}
+</div>
+))}
+</div>
+</div>
+)}
+</div>
+</div>
+)}
+
+{/* Contractual Obligations */}
+{selectedEntity.contractualObligations && selectedEntity.contractualObligations.length > 0 && selectedEntity.contractualObligations[0] && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Contractual Obligations</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md space-y-2`}>
+{selectedEntity.contractualObligations.map((obligation, idx) => obligation && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+• {obligation}
+</div>
+))}
+</div>
+</div>
+)}
+
+{/* Landing Zones */}
+{selectedEntity.type === '911_center' && selectedEntity.flightProgram && selectedEntity.flightProgram.landingZones && selectedEntity.flightProgram.landingZones.length > 0 && selectedEntity.flightProgram.landingZones[0].name && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2 flex items-center`}>
+<Icon type="location" className="mr-2" />
+Known Landing Zones
+</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md space-y-3`}>
+{selectedEntity.flightProgram.landingZones.map((zone, idx) => zone.name && (
+<div key={idx} className="border-l-2 border-blue-500 pl-3">
+<p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{zone.name}</p>
+{zone.coordinates && <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Coordinates: {zone.coordinates}</p>}
+{zone.description && <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{zone.description}</p>}
+</div>
+))}
+</div>
+</div>
+)}
+
+{/* County Information */}
+{selectedEntity.countyInfo && selectedEntity.countyInfo.county && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>County Information</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md space-y-3`}>
+<div>
+<p className={`font-medium ${darkMode ? 'text-blue-300' : 'text-blue-600'}`}>{selectedEntity.countyInfo.county}</p>
+</div>
+{selectedEntity.countyInfo.sheriffAgencies && selectedEntity.countyInfo.sheriffAgencies.length > 0 && selectedEntity.countyInfo.sheriffAgencies[0].name && (
+<div>
+<p className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Sheriff Agencies</p>
+<div className="space-y-1">
+{selectedEntity.countyInfo.sheriffAgencies.map((agency, idx) => agency.name && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+{agency.name} {agency.phone && `- ${agency.phone}`}
+</div>
+))}
+</div>
+</div>
+)}
+{selectedEntity.countyInfo.fireAgencies && selectedEntity.countyInfo.fireAgencies.length > 0 && selectedEntity.countyInfo.fireAgencies[0].name && (
+<div>
+<p className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Fire Agencies</p>
+<div className="space-y-1">
+{selectedEntity.countyInfo.fireAgencies.map((agency, idx) => agency.name && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+{agency.name} {agency.phone && `- ${agency.phone}`}
+</div>
+))}
+</div>
+</div>
+)}
+{selectedEntity.countyInfo.emsAgencies && selectedEntity.countyInfo.emsAgencies.length > 0 && selectedEntity.countyInfo.emsAgencies[0].name && (
+<div>
+<p className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>EMS Agencies</p>
+<div className="space-y-1">
+{selectedEntity.countyInfo.emsAgencies.map((agency, idx) => agency.name && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+{agency.name} {agency.phone && `- ${agency.phone}`}
+</div>
+))}
+</div>
+</div>
+)}
+</div>
+</div>
+)}
+
+{/* Notes */}
+{selectedEntity.notes && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Notes</h3>
+<p className={`${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-50 text-gray-700'} p-3 rounded-md whitespace-pre-wrap`}>{selectedEntity.notes}</p>
+</div>
+)}
+</div>
+</div>
+) : (
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 text-center`}>
+<p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Select an entity to view details</p>
+</div>
+)}
+</div>
+)
 {/* Basic Information */}
 <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md shadow-sm`}>
 <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center text-lg`}>
