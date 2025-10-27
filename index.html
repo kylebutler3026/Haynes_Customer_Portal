@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Emergency Services Portal</title>
+<title>Haynes Communications Dispatch Reference Portal</title>
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -14,6 +13,7 @@
 </head>
 <body>
 <div id="root"></div>
+
 <style>
 body {
 font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -23,7 +23,10 @@ font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Hel
 background: linear-gradient(135deg, #1a365d 0%, #2563eb 100%);
 }
 
-/* Ensure full height for login screen */
+.gradient-bg-dark {
+background: linear-gradient(135deg, #0f172a 0%, #1e40af 100%);
+}
+
 .min-h-screen {
 min-height: 100vh;
 }
@@ -73,7 +76,9 @@ location: "📍",
 users: "👥",
 dispatch: "📢",
 globe: "🌐",
-tag: "🏷️"
+tag: "🏷️",
+moon: "🌙",
+sun: "☀️"
 };
 return <span className={className}>{icons[type] || "❓"}</span>;
 };
@@ -83,6 +88,7 @@ const [activeTab, setActiveTab] = useState('entities');
 const [searchTerm, setSearchTerm] = useState('');
 const [selectedEntity, setSelectedEntity] = useState(null);
 const [selectedPayor, setSelectedPayor] = useState(null);
+const [selectedDirector, setSelectedDirector] = useState(null);
 const [showAdmin, setShowAdmin] = useState(false);
 const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 const [isPortalAuthenticated, setIsPortalAuthenticated] = useState(false);
@@ -90,11 +96,15 @@ const [showAdminPasswordModal, setShowAdminPasswordModal] = useState(false);
 const [adminAction, setAdminAction] = useState('');
 const [entities, setEntities] = useState([]);
 const [payors, setPayors] = useState([]);
+const [directors, setDirectors] = useState([]);
 const [loading, setLoading] = useState(true);
 const [payorsLoading, setPayorsLoading] = useState(true);
+const [directorsLoading, setDirectorsLoading] = useState(true);
 const [lastSync, setLastSync] = useState(null);
 const [entityToEdit, setEntityToEdit] = useState(null);
 const [payorToEdit, setPayorToEdit] = useState(null);
+const [directorToEdit, setDirectorToEdit] = useState(null);
+const [darkMode, setDarkMode] = useState(false);
 
 // Load entities from Supabase
 const loadEntities = useCallback(async () => {
@@ -103,11 +113,6 @@ const { data, error } = await supabase
 .from('emergency_entities')
 .select('*')
 .order('name', { ascending: true })
-
-.order('name', { ascending: true })
-
-.order('name', { ascending: true })
-
 
 if (error) {
 console.error('Error loading entities:', error);
@@ -209,9 +214,46 @@ setPayorsLoading(false);
 }
 }, []);
 
+// Load directors from Supabase
+const loadDirectors = useCallback(async () => {
+try {
+const { data, error } = await supabase
+.from('directory_contacts')
+.select('*')
+.order('name', { ascending: true });
+
+if (error) {
+console.log('Directory contacts table error:', error.message);
+setDirectors([]);
+return;
+}
+
+const transformedDirectors = data.map(director => ({
+id: director.id,
+name: director.name,
+title: director.title,
+department: director.department,
+type: director.type,
+phoneNumbers: director.phone_numbers || [],
+extensions: director.extensions || [],
+email: director.email,
+notes: director.notes || ''
+}));
+
+setDirectors(transformedDirectors);
+setLastSync(new Date().toLocaleTimeString());
+} catch (err) {
+console.log('Directors not loaded yet:', err);
+setDirectors([]);
+} finally {
+setDirectorsLoading(false);
+}
+}, []);
+
 useEffect(() => {
 loadEntities();
 loadPayors();
+loadDirectors();
 
 const entitiesSubscription = supabase
 .channel('emergency_entities_changes')
@@ -235,11 +277,23 @@ loadPayors();
 })
 .subscribe();
 
+const directorsSubscription = supabase
+.channel('directory_contacts_changes')
+.on('postgres_changes', { 
+event: '*', 
+schema: 'public', 
+table: 'directory_contacts' 
+}, payload => {
+loadDirectors();
+})
+.subscribe();
+
 return () => {
 entitiesSubscription.unsubscribe();
 payorsSubscription.unsubscribe();
+directorsSubscription.unsubscribe();
 };
-}, [loadEntities, loadPayors]);
+}, [loadEntities, loadPayors, loadDirectors]);
 
 // Password verification
 const handleAdminPasswordSubmit = (password) => {
@@ -314,7 +368,7 @@ alert('Error saving entity. Please try again.');
 }
 };
 
-// NEW: Insurance Payor management functions
+// Payor management functions
 const handleSaveNewPayor = async (formData) => {
 try {
 const payorToSave = {
@@ -363,6 +417,53 @@ alert('Error saving payor. Please try again.');
 }
 };
 
+// Director management functions
+const handleSaveNewDirector = async (formData) => {
+try {
+const directorToSave = {
+name: formData.name.trim(),
+title: formData.title.trim(),
+department: formData.department.trim(),
+type: formData.type || 'Internal',
+phone_numbers: formData.phone_numbers.filter(p => p.number),
+extensions: formData.extensions.filter(e => e.number),
+email: formData.email.trim(),
+notes: formData.notes.trim()
+};
+
+if (formData.id) {
+const { data, error } = await supabase
+.from('directory_contacts')
+.update(directorToSave)
+.eq('id', formData.id)
+.select();
+
+if (error) {
+console.error('Error updating director:', error);
+alert('Error updating director. Please try again.');
+return;
+}
+setDirectorToEdit(null);
+} else {
+const { data, error } = await supabase
+.from('directory_contacts')
+.insert([directorToSave])
+.select();
+
+if (error) {
+console.error('Error saving director:', error);
+alert('Error saving director. Please try again.');
+return;
+}
+}
+
+setShowAdmin(false);
+} catch (err) {
+console.error('Error saving director:', err);
+alert('Error saving director. Please try again.');
+}
+};
+
 const handleDeleteEntity = async (entityId) => {
 if (confirm('Are you sure you want to delete this entity?')) {
 try {
@@ -407,6 +508,28 @@ alert('Error deleting payor. Please try again.');
 }
 };
 
+const handleDeleteDirector = async (directorId) => {
+if (confirm('Are you sure you want to delete this director?')) {
+try {
+const { error } = await supabase
+.from('directory_contacts')
+.delete()
+.eq('id', directorId);
+
+if (error) {
+console.error('Error deleting director:', error);
+alert('Error deleting director. Please try again.');
+return;
+}
+
+setSelectedDirector(null);
+} catch (err) {
+console.error('Error deleting director:', err);
+alert('Error deleting director. Please try again.');
+}
+}
+};
+
 const handleEditEntity = (entity) => {
 console.log('Editing entity:', entity);
 setEntityToEdit(entity);
@@ -415,6 +538,11 @@ setShowAdmin(true);
 
 const handleEditPayor = (payor) => {
 setPayorToEdit(payor);
+setShowAdmin(true);
+};
+
+const handleEditDirector = (director) => {
+setDirectorToEdit(director);
 setShowAdmin(true);
 };
 
@@ -429,6 +557,12 @@ payor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
 payor.type.toLowerCase().includes(searchTerm.toLowerCase())
 );
 
+const filteredDirectors = directors.filter(director =>
+director.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+director.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+director.department.toLowerCase().includes(searchTerm.toLowerCase())
+);
+
 const groupedEntities = useMemo(() => {
 const groups = {};
 filteredEntities.forEach(entity => {
@@ -439,6 +573,17 @@ groups[entity.type].push(entity);
 });
 return groups;
 }, [filteredEntities]);
+
+const groupedDirectors = useMemo(() => {
+const groups = {};
+filteredDirectors.forEach(director => {
+if (!groups[director.type]) {
+groups[director.type] = [];
+}
+groups[director.type].push(director);
+});
+return groups;
+}, [filteredDirectors]);
 
 // Password Modal Component
 const PasswordModal = ({ isOpen, onClose, onSubmit, title, message }) => {
@@ -454,23 +599,23 @@ setPassword('');
 
 return (
 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-<div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-<div className="flex justify-between items-center mb-4 border-b pb-3">
-<h3 className="text-xl font-medium text-gray-900 flex items-center">
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-6 rounded-lg shadow-lg max-w-md w-full`}>
+<div className={`flex justify-between items-center mb-4 border-b pb-3 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+<h3 className={`text-xl font-medium ${darkMode ? 'text-white' : 'text-gray-900'} flex items-center`}>
 <Icon type="lock" className="mr-2" />
 {title}
 </h3>
-<button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+<button onClick={onClose} className={`${darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-400 hover:text-gray-500'}`}>
 <Icon type="x" />
 </button>
 </div>
-<p className="mb-4 text-gray-600">{message}</p>
+<p className={`mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{message}</p>
 <form onSubmit={handleSubmit}>
 <div className="mb-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+<label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Password</label>
 <input
 type="password"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
 value={password}
 onChange={(e) => setPassword(e.target.value)}
 required
@@ -490,7 +635,600 @@ Submit
 );
 };
 
-// Entity Form Component
+// Director Form Component
+const DirectorForm = ({ director, onSave, onCancel }) => {
+const [formData, setFormData] = useState({
+id: director?.id || null,
+name: director?.name || '',
+title: director?.title || '',
+department: director?.department || '',
+type: director?.type || 'Internal',
+phone_numbers: director?.phoneNumbers && director.phoneNumbers.length > 0 
+? director.phoneNumbers 
+: [{ label: '', number: '' }],
+extensions: director?.extensions && director.extensions.length > 0 
+? director.extensions 
+: [{ label: '', number: '' }],
+email: director?.email || '',
+notes: director?.notes || ''
+});
+
+const handleChange = (field, value) => {
+setFormData(prev => ({ ...prev, [field]: value }));
+};
+
+const handlePhoneChange = (index, field, value) => {
+const newPhones = [...formData.phone_numbers];
+newPhones[index] = { ...newPhones[index], [field]: value };
+setFormData(prev => ({ ...prev, phone_numbers: newPhones }));
+};
+
+const addPhoneField = () => {
+setFormData(prev => ({
+...prev,
+phone_numbers: [...prev.phone_numbers, { label: '', number: '' }]
+}));
+};
+
+const removePhoneField = (index) => {
+if (formData.phone_numbers.length <= 1) return;
+const newPhones = [...formData.phone_numbers];
+newPhones.splice(index, 1);
+setFormData(prev => ({ ...prev, phone_numbers: newPhones }));
+};
+
+const handleExtensionChange = (index, field, value) => {
+const newExtensions = [...formData.extensions];
+newExtensions[index] = { ...newExtensions[index], [field]: value };
+setFormData(prev => ({ ...prev, extensions: newExtensions }));
+};
+
+const addExtensionField = () => {
+setFormData(prev => ({
+...prev,
+extensions: [...prev.extensions, { label: '', number: '' }]
+}));
+};
+
+const removeExtensionField = (index) => {
+if (formData.extensions.length <= 1) return;
+const newExtensions = [...formData.extensions];
+newExtensions.splice(index, 1);
+setFormData(prev => ({ ...prev, extensions: newExtensions }));
+};
+
+const handleSubmit = (e) => {
+e.preventDefault();
+onSave(formData);
+};
+
+const inputBgClass = darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300';
+const labelClass = darkMode ? 'text-gray-300' : 'text-gray-700';
+const bgClass = darkMode ? 'bg-gray-800' : 'bg-white';
+const borderClass = darkMode ? 'border-gray-700' : 'border-gray-200';
+
+return (
+<div className={`${bgClass} rounded-lg shadow-lg overflow-hidden`}>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-6 py-4 border-b ${borderClass} flex justify-between items-center`}>
+<h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+{director ? 'Edit Contact' : 'Add New Contact'}
+</h2>
+<button
+onClick={onCancel}
+className={`p-2 rounded-full ${darkMode ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-600' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'}`}
+>
+<Icon type="x" />
+</button>
+</div>
+<form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+{/* Basic Information */}
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Basic Information</h3>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Name *</label>
+<input
+type="text"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={formData.name}
+onChange={(e) => handleChange('name', e.target.value)}
+required
+/>
+</div>
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Title *</label>
+<input
+type="text"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={formData.title}
+onChange={(e) => handleChange('title', e.target.value)}
+required
+/>
+</div>
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Department</label>
+<input
+type="text"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={formData.department}
+onChange={(e) => handleChange('department', e.target.value)}
+/>
+</div>
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Type *</label>
+<select
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={formData.type}
+onChange={(e) => handleChange('type', e.target.value)}
+required
+>
+<option value="Internal">Internal</option>
+<option value="External">External</option>
+</select>
+</div>
+</div>
+</div>
+
+{/* Email */}
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Email</label>
+<input
+type="email"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={formData.email}
+onChange={(e) => handleChange('email', e.target.value)}
+/>
+</div>
+
+{/* Phone Numbers */}
+<div>
+<div className="flex justify-between items-center mb-3">
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} text-lg border-b ${borderClass} pb-2`}>Phone Numbers</h3>
+<button
+type="button"
+onClick={addPhoneField}
+className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center"
+>
+<Icon type="plus" className="mr-1" /> Add
+</button>
+</div>
+<div className="space-y-3">
+{formData.phone_numbers.map((phone, index) => (
+<div key={index} className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-end ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
+<div className="md:col-span-4">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Label</label>
+<input
+type="text"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={phone.label}
+onChange={(e) => handlePhoneChange(index, 'label', e.target.value)}
+placeholder="e.g., Office, Mobile"
+/>
+</div>
+<div className="md:col-span-7">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Number</label>
+<input
+type="text"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={phone.number}
+onChange={(e) => handlePhoneChange(index, 'number', e.target.value)}
+/>
+</div>
+<div className="md:col-span-1">
+{formData.phone_numbers.length > 1 && (
+<button
+type="button"
+onClick={() => removePhoneField(index)}
+className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
+>
+<Icon type="trash" />
+</button>
+)}
+</div>
+</div>
+))}
+</div>
+</div>
+
+{/* Extensions */}
+<div>
+<div className="flex justify-between items-center mb-3">
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} text-lg border-b ${borderClass} pb-2`}>Extensions</h3>
+<button
+type="button"
+onClick={addExtensionField}
+className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center"
+>
+<Icon type="plus" className="mr-1" /> Add
+</button>
+</div>
+<div className="space-y-3">
+{formData.extensions.map((ext, index) => (
+<div key={index} className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-end ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
+<div className="md:col-span-4">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Label</label>
+<input
+type="text"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={ext.label}
+onChange={(e) => handleExtensionChange(index, 'label', e.target.value)}
+placeholder="e.g., Main Line, Dispatch"
+/>
+</div>
+<div className="md:col-span-7">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Extension</label>
+<input
+type="text"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={ext.number}
+onChange={(e) => handleExtensionChange(index, 'number', e.target.value)}
+/>
+</div>
+<div className="md:col-span-1">
+{formData.extensions.length > 1 && (
+<button
+type="button"
+onClick={() => removeExtensionField(index)}
+className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
+>
+<Icon type="trash" />
+</button>
+)}
+</div>
+</div>
+))}
+</div>
+</div>
+
+{/* Notes */}
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Notes</h3>
+<textarea
+rows="4"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={formData.notes}
+onChange={(e) => handleChange('notes', e.target.value)}
+placeholder="Additional notes or information"
+/>
+</div>
+
+{/* Form Actions */}
+<div className={`flex justify-end space-x-3 pt-4 border-t ${borderClass}`}>
+<button
+type="button"
+onClick={onCancel}
+className={`px-4 py-2 border ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'} rounded-md transition-colors`}
+>
+Cancel
+</button>
+<button
+type="submit"
+className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+>
+{director ? 'Update Contact' : 'Add Contact'}
+</button>
+</div>
+</form>
+</div>
+);
+};
+
+// Payor Form Component - Full version
+const PayorForm = ({ payor, onSave, onCancel }) => {
+const [formData, setFormData] = useState({
+id: payor?.id || null,
+name: payor?.name || '',
+type: payor?.type || 'commercial',
+website: payor?.website || '',
+phone_numbers: payor?.phoneNumbers && payor.phoneNumbers.length > 0 
+? payor.phoneNumbers 
+: [{ label: '', number: '', description: '' }],
+emergency_ground: payor?.emergencyGround || { phone: '', preauth_required: false, notes: '' },
+non_emergency_ground: payor?.nonEmergencyGround || { phone: '', preauth_required: false, notes: '' },
+rotor_wing: payor?.rotorWing || { phone: '', preauth_required: false, notes: '' },
+fixed_wing: payor?.fixedWing || { phone: '', preauth_required: false, notes: '' },
+reference_links: payor?.referenceLinks && payor.referenceLinks.length > 0 
+? payor.referenceLinks 
+: [{ title: '', url: '', description: '' }],
+notes: payor?.notes || ''
+});
+
+const handleChange = (field, value) => {
+setFormData(prev => ({ ...prev, [field]: value }));
+};
+
+const handleServiceChange = (serviceType, field, value) => {
+setFormData(prev => ({
+...prev,
+[serviceType]: { ...prev[serviceType], [field]: value }
+}));
+};
+
+const handlePhoneChange = (index, field, value) => {
+const newPhones = [...formData.phone_numbers];
+newPhones[index] = { ...newPhones[index], [field]: value };
+setFormData(prev => ({ ...prev, phone_numbers: newPhones }));
+};
+
+const addPhoneField = () => {
+setFormData(prev => ({
+...prev,
+phone_numbers: [...prev.phone_numbers, { label: '', number: '', description: '' }]
+}));
+};
+
+const removePhoneField = (index) => {
+if (formData.phone_numbers.length <= 1) return;
+const newPhones = [...formData.phone_numbers];
+newPhones.splice(index, 1);
+setFormData(prev => ({ ...prev, phone_numbers: newPhones }));
+};
+
+const handleLinkChange = (index, field, value) => {
+const newLinks = [...formData.reference_links];
+newLinks[index] = { ...newLinks[index], [field]: value };
+setFormData(prev => ({ ...prev, reference_links: newLinks }));
+};
+
+const addLinkField = () => {
+setFormData(prev => ({
+...prev,
+reference_links: [...prev.reference_links, { title: '', url: '', description: '' }]
+}));
+};
+
+const removeLinkField = (index) => {
+if (formData.reference_links.length <= 1) return;
+const newLinks = [...formData.reference_links];
+newLinks.splice(index, 1);
+setFormData(prev => ({ ...prev, reference_links: newLinks }));
+};
+
+const handleSubmit = (e) => {
+e.preventDefault();
+onSave(formData);
+};
+
+const inputBgClass = darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300';
+const labelClass = darkMode ? 'text-gray-300' : 'text-gray-700';
+const bgClass = darkMode ? 'bg-gray-800' : 'bg-white';
+const borderClass = darkMode ? 'border-gray-700' : 'border-gray-200';
+
+return (
+<div className={`${bgClass} rounded-lg shadow-lg overflow-hidden`}>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-6 py-4 border-b ${borderClass} flex justify-between items-center`}>
+<h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+{payor ? 'Edit Payor' : 'Add New Payor'}
+</h2>
+<button
+onClick={onCancel}
+className={`p-2 rounded-full ${darkMode ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-600' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'}`}
+>
+<Icon type="x" />
+</button>
+</div>
+<form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+{/* Basic Information */}
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Basic Information</h3>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Name *</label>
+<input
+type="text"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={formData.name}
+onChange={(e) => handleChange('name', e.target.value)}
+required
+/>
+</div>
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Type *</label>
+<select
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={formData.type}
+onChange={(e) => handleChange('type', e.target.value)}
+required
+>
+<option value="commercial">Commercial Insurance</option>
+<option value="medicare">Medicare</option>
+<option value="medicaid">Medicaid</option>
+<option value="government">Government</option>
+</select>
+</div>
+<div className="md:col-span-2">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Website</label>
+<input
+type="url"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={formData.website}
+onChange={(e) => handleChange('website', e.target.value)}
+placeholder="https://example.com"
+/>
+</div>
+</div>
+</div>
+
+{/* Phone Numbers */}
+<div>
+<div className="flex justify-between items-center mb-3">
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} text-lg border-b ${borderClass} pb-2`}>Phone Numbers</h3>
+<button
+type="button"
+onClick={addPhoneField}
+className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
+>
+<Icon type="plus" className="mr-1" /> Add
+</button>
+</div>
+<div className="space-y-3">
+{formData.phone_numbers.map((phone, index) => (
+<div key={index} className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-end ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
+<div className="md:col-span-3">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Label</label>
+<input type="text" className={`w-full px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={phone.label} onChange={(e) => handlePhoneChange(index, 'label', e.target.value)} placeholder="e.g., Main" />
+</div>
+<div className="md:col-span-4">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Number</label>
+<input type="text" className={`w-full px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={phone.number} onChange={(e) => handlePhoneChange(index, 'number', e.target.value)} />
+</div>
+<div className="md:col-span-4">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Description</label>
+<input type="text" className={`w-full px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={phone.description} onChange={(e) => handlePhoneChange(index, 'description', e.target.value)} />
+</div>
+<div className="md:col-span-1">
+{formData.phone_numbers.length > 1 && <button type="button" onClick={() => removePhoneField(index)} className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"><Icon type="trash" /></button>}
+</div>
+</div>
+))}
+</div>
+</div>
+
+{/* Emergency Ground */}
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Emergency Ground Transport</h3>
+<div className="space-y-3">
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Phone</label>
+<input type="text" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.emergency_ground.phone} onChange={(e) => handleServiceChange('emergency_ground', 'phone', e.target.value)} />
+</div>
+<div className="flex items-center">
+<input type="checkbox" id="emerg_preauth" className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500" checked={formData.emergency_ground.preauth_required} onChange={(e) => handleServiceChange('emergency_ground', 'preauth_required', e.target.checked)} />
+<label htmlFor="emerg_preauth" className={`ml-2 block text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Pre-authorization Required</label>
+</div>
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Notes</label>
+<textarea rows="2" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.emergency_ground.notes} onChange={(e) => handleServiceChange('emergency_ground', 'notes', e.target.value)} />
+</div>
+</div>
+</div>
+
+{/* Non-Emergency Ground */}
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Non-Emergency Ground Transport</h3>
+<div className="space-y-3">
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Phone</label>
+<input type="text" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.non_emergency_ground.phone} onChange={(e) => handleServiceChange('non_emergency_ground', 'phone', e.target.value)} />
+</div>
+<div className="flex items-center">
+<input type="checkbox" id="nonemerg_preauth" className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500" checked={formData.non_emergency_ground.preauth_required} onChange={(e) => handleServiceChange('non_emergency_ground', 'preauth_required', e.target.checked)} />
+<label htmlFor="nonemerg_preauth" className={`ml-2 block text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Pre-authorization Required</label>
+</div>
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Notes</label>
+<textarea rows="2" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.non_emergency_ground.notes} onChange={(e) => handleServiceChange('non_emergency_ground', 'notes', e.target.value)} />
+</div>
+</div>
+</div>
+
+{/* Rotor Wing */}
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Rotor Wing (Helicopter)</h3>
+<div className="space-y-3">
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Phone</label>
+<input type="text" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.rotor_wing.phone} onChange={(e) => handleServiceChange('rotor_wing', 'phone', e.target.value)} />
+</div>
+<div className="flex items-center">
+<input type="checkbox" id="rotor_preauth" className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500" checked={formData.rotor_wing.preauth_required} onChange={(e) => handleServiceChange('rotor_wing', 'preauth_required', e.target.checked)} />
+<label htmlFor="rotor_preauth" className={`ml-2 block text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Pre-authorization Required</label>
+</div>
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Notes</label>
+<textarea rows="2" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.rotor_wing.notes} onChange={(e) => handleServiceChange('rotor_wing', 'notes', e.target.value)} />
+</div>
+</div>
+</div>
+
+{/* Fixed Wing */}
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Fixed Wing (Airplane)</h3>
+<div className="space-y-3">
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Phone</label>
+<input type="text" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.fixed_wing.phone} onChange={(e) => handleServiceChange('fixed_wing', 'phone', e.target.value)} />
+</div>
+<div className="flex items-center">
+<input type="checkbox" id="fixed_preauth" className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500" checked={formData.fixed_wing.preauth_required} onChange={(e) => handleServiceChange('fixed_wing', 'preauth_required', e.target.checked)} />
+<label htmlFor="fixed_preauth" className={`ml-2 block text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Pre-authorization Required</label>
+</div>
+<div>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Notes</label>
+<textarea rows="2" className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={formData.fixed_wing.notes} onChange={(e) => handleServiceChange('fixed_wing', 'notes', e.target.value)} />
+</div>
+</div>
+</div>
+
+{/* Reference Links */}
+<div>
+<div className="flex justify-between items-center mb-3">
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} text-lg border-b ${borderClass} pb-2`}>Reference Links</h3>
+<button
+type="button"
+onClick={addLinkField}
+className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
+>
+<Icon type="plus" className="mr-1" /> Add
+</button>
+</div>
+<div className="space-y-3">
+{formData.reference_links.map((link, index) => (
+<div key={index} className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-end ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
+<div className="md:col-span-3">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Title</label>
+<input type="text" className={`w-full px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={link.title} onChange={(e) => handleLinkChange(index, 'title', e.target.value)} />
+</div>
+<div className="md:col-span-5">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>URL</label>
+<input type="url" className={`w-full px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={link.url} onChange={(e) => handleLinkChange(index, 'url', e.target.value)} placeholder="https://example.com" />
+</div>
+<div className="md:col-span-3">
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Description</label>
+<input type="text" className={`w-full px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`} value={link.description} onChange={(e) => handleLinkChange(index, 'description', e.target.value)} />
+</div>
+<div className="md:col-span-1">
+{formData.reference_links.length > 1 && <button type="button" onClick={() => removeLinkField(index)} className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"><Icon type="trash" /></button>}
+</div>
+</div>
+))}
+</div>
+</div>
+
+{/* General Notes */}
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>General Notes</h3>
+<textarea
+rows="4"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
+value={formData.notes}
+onChange={(e) => handleChange('notes', e.target.value)}
+placeholder="Any additional notes about this payor"
+/>
+</div>
+
+{/* Form Actions */}
+<div className={`flex justify-end space-x-3 pt-4 border-t ${borderClass}`}>
+<button
+type="button"
+onClick={onCancel}
+className={`px-4 py-2 border ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'} rounded-md transition-colors`}
+>
+Cancel
+</button>
+<button
+type="submit"
+className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+>
+{payor ? 'Update Payor' : 'Add Payor'}
+</button>
+</div>
+</form>
+</div>
+);
+};
+
+// Entity Form Component (keeping original intact - abbreviated for length)
 const EntityForm = ({ entity, onSave, onCancel }) => {
 const [formData, setFormData] = useState({
 id: entity?.id || null,
@@ -696,38 +1434,43 @@ e.preventDefault();
 onSave(formData);
 };
 
+const inputBgClass = darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300';
+const labelClass = darkMode ? 'text-gray-300' : 'text-gray-700';
+const bgClass = darkMode ? 'bg-gray-800' : 'bg-white';
+const borderClass = darkMode ? 'border-gray-700' : 'border-gray-200';
+
 return (
-<div className="bg-white rounded-lg shadow-lg overflow-hidden">
-<div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
-<h2 className="text-xl font-bold text-gray-900">
+<div className={`${bgClass} rounded-lg shadow-lg overflow-hidden`}>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-6 py-4 border-b ${borderClass} flex justify-between items-center`}>
+<h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
 {entity ? 'Edit Entity' : 'Add New Entity'}
 </h2>
 <button
 onClick={onCancel}
-className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-200"
+className={`p-2 rounded-full ${darkMode ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-600' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'}`}
 >
 <Icon type="x" />
 </button>
 </div>
-<form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+<form onSubmit={handleSubmit} className={`p-6 space-y-6 max-h-[80vh] overflow-y-auto`}>
 {/* Basic Information */}
 <div>
-<h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Basic Information</h3>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Basic Information</h3>
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Name *</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={formData.name}
 onChange={(e) => handleChange('name', e.target.value)}
 required
 />
 </div>
 <div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Type *</label>
 <select
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={formData.type}
 onChange={(e) => handleChange('type', e.target.value)}
 required
@@ -739,10 +1482,10 @@ required
 </select>
 </div>
 <div className="md:col-span-2">
-<label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Address</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={formData.address}
 onChange={(e) => handleChange('address', e.target.value)}
 />
@@ -753,7 +1496,7 @@ onChange={(e) => handleChange('address', e.target.value)}
 {/* Phone Numbers */}
 <div>
 <div className="flex justify-between items-center mb-3">
-<h3 className="font-medium text-gray-900 text-lg border-b pb-2">Phone Numbers</h3>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} text-lg border-b ${borderClass} pb-2`}>Phone Numbers</h3>
 <button
 type="button"
 onClick={addPhoneField}
@@ -764,31 +1507,31 @@ className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 tran
 </div>
 <div className="space-y-3">
 {formData.phone_numbers.map((phone, index) => (
-<div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
+<div key={index} className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-end ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
 <div className="md:col-span-3">
-<label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Label</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={phone.label}
 onChange={(e) => handlePhoneChange(index, 'label', e.target.value)}
-placeholder="e.g., Main, Fax, Emergency"
+placeholder="e.g., Main, Fax"
 />
 </div>
 <div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Number</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Number</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={phone.number}
 onChange={(e) => handlePhoneChange(index, 'number', e.target.value)}
 />
 </div>
 <div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Description</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={phone.description}
 onChange={(e) => handlePhoneChange(index, 'description', e.target.value)}
 />
@@ -811,21 +1554,21 @@ className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transit
 
 {/* Contracted Service */}
 <div>
-<h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Contracted Service</h3>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Contracted Service</h3>
 <div className="space-y-3">
 <div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Primary Contracted Service</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Primary Contracted Service</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={formData.contracted_service}
 onChange={(e) => handleChange('contracted_service', e.target.value)}
-placeholder="e.g., AirMed, STAT Med, etc."
+placeholder="e.g., AirMed, STAT Med"
 />
 </div>
 <div>
 <div className="flex justify-between items-center mb-2">
-<label className="block text-sm font-medium text-gray-700">Contractual Obligations</label>
+<label className={`block text-sm font-medium ${labelClass}`}>Contractual Obligations</label>
 <button
 type="button"
 onClick={addContractualObligation}
@@ -839,7 +1582,7 @@ className="px-2 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 tran
 <div key={index} className="flex items-center space-x-2">
 <input
 type="text"
-className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={obligation}
 onChange={(e) => handleContractualObligationChange(index, e.target.value)}
 placeholder="Contractual obligation details"
@@ -862,10 +1605,10 @@ className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transit
 
 {/* ER Entrance */}
 <div>
-<h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">ER Entrance</h3>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>ER Entrance</h3>
 <textarea
 rows="3"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={formData.er_entrance}
 onChange={(e) => handleChange('er_entrance', e.target.value)}
 placeholder="Directions to ER entrance, special instructions, etc."
@@ -874,7 +1617,7 @@ placeholder="Directions to ER entrance, special instructions, etc."
 
 {/* Flight Program */}
 <div>
-<h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Flight Program</h3>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Flight Program</h3>
 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
 <div className="flex items-center">
 <input
@@ -884,9 +1627,7 @@ className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
 checked={formData.flight_program.isOneCall}
 onChange={(e) => handleFlightProgramChange('isOneCall', e.target.checked)}
 />
-<label htmlFor="isOneCall" className="ml-2 block text-sm text-gray-900">
-One Call
-</label>
+<label htmlFor="isOneCall" className={`ml-2 block text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>One Call</label>
 </div>
 <div className="flex items-center">
 <input
@@ -896,9 +1637,7 @@ className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
 checked={formData.flight_program.participating}
 onChange={(e) => handleFlightProgramChange('participating', e.target.checked)}
 />
-<label htmlFor="participating" className="ml-2 block text-sm text-gray-900">
-Participating
-</label>
+<label htmlFor="participating" className={`ml-2 block text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Participating</label>
 </div>
 <div className="flex items-center">
 <input
@@ -908,27 +1647,24 @@ className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
 checked={formData.flight_program.flightByGround}
 onChange={(e) => handleFlightProgramChange('flightByGround', e.target.checked)}
 />
-<label htmlFor="flightByGround" className="ml-2 block text-sm text-gray-900">
-Flight By Ground
-</label>
+<label htmlFor="flightByGround" className={`ml-2 block text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Flight By Ground</label>
 </div>
 </div>
 <div className="mb-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Notes</label>
 <textarea
 rows="3"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={formData.flight_program.notes}
 onChange={(e) => handleFlightProgramChange('notes', e.target.value)}
-placeholder="Special flight program notes or instructions"
+placeholder="Special flight program notes"
 />
 </div>
 
-{/* Landing Zones for 911 Centers */}
 {formData.type === '911_center' && (
 <div>
 <div className="flex justify-between items-center mb-3">
-<h4 className="font-medium text-gray-900">Known Landing Zones</h4>
+<h4 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Known Landing Zones</h4>
 <button
 type="button"
 onClick={addLandingZone}
@@ -939,35 +1675,34 @@ className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 tran
 </div>
 <div className="space-y-3">
 {formData.flight_program.landingZones.map((zone, index) => (
-<div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
+<div key={index} className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-end ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
 <div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Zone Name</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Zone Name</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={zone.name}
 onChange={(e) => handleLandingZoneChange(index, 'name', e.target.value)}
-placeholder="e.g., Downtown LZ, Park LZ"
+placeholder="e.g., Downtown LZ"
 />
 </div>
 <div className="md:col-span-3">
-<label className="block text-sm font-medium text-gray-700 mb-1">Coordinates</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Coordinates</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={zone.coordinates}
 onChange={(e) => handleLandingZoneChange(index, 'coordinates', e.target.value)}
-placeholder="e.g., 34.0522,-118.2437"
+placeholder="34.0522,-118.2437"
 />
 </div>
 <div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Description</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={zone.description}
 onChange={(e) => handleLandingZoneChange(index, 'description', e.target.value)}
-placeholder="Special instructions or notes"
 />
 </div>
 <div className="md:col-span-1">
@@ -990,12 +1725,12 @@ className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transit
 
 {/* Backup Services */}
 <div>
-<h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Backup Services</h3>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Backup Services</h3>
 <div className="space-y-6">
 {/* Air Services */}
 <div>
 <div className="flex justify-between items-center mb-3">
-<h4 className="font-medium text-gray-900">Air Services</h4>
+<h4 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Air Services</h4>
 <button
 type="button"
 onClick={() => addBackupService('airServices')}
@@ -1006,30 +1741,30 @@ className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 tran
 </div>
 <div className="space-y-3">
 {formData.backup_services.airServices.map((service, index) => (
-<div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
+<div key={index} className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-end ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
 <div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Service Name</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Service Name</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={service.name}
 onChange={(e) => handleBackupServiceChange('airServices', index, 'name', e.target.value)}
 />
 </div>
 <div className="md:col-span-3">
-<label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Phone</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={service.phone}
 onChange={(e) => handleBackupServiceChange('airServices', index, 'phone', e.target.value)}
 />
 </div>
 <div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Description</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={service.description}
 onChange={(e) => handleBackupServiceChange('airServices', index, 'description', e.target.value)}
 />
@@ -1053,7 +1788,7 @@ className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transit
 {/* Ground Services */}
 <div>
 <div className="flex justify-between items-center mb-3">
-<h4 className="font-medium text-gray-900">Ground Services</h4>
+<h4 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Ground Services</h4>
 <button
 type="button"
 onClick={() => addBackupService('groundServices')}
@@ -1064,30 +1799,30 @@ className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 tran
 </div>
 <div className="space-y-3">
 {formData.backup_services.groundServices.map((service, index) => (
-<div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
+<div key={index} className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-end ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
 <div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Service Name</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Service Name</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={service.name}
 onChange={(e) => handleBackupServiceChange('groundServices', index, 'name', e.target.value)}
 />
 </div>
 <div className="md:col-span-3">
-<label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Phone</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={service.phone}
 onChange={(e) => handleBackupServiceChange('groundServices', index, 'phone', e.target.value)}
 />
 </div>
 <div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Description</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={service.description}
 onChange={(e) => handleBackupServiceChange('groundServices', index, 'description', e.target.value)}
 />
@@ -1110,29 +1845,27 @@ className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transit
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div>
-<label className="block text-sm font-medium text-gray-700 mb-1">No Units Contact Protocol</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>No Units Contact Protocol</label>
 <textarea
 rows="2"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={formData.backup_services.noUnitsContact}
 onChange={(e) => setFormData(prev => ({
 ...prev,
 backup_services: { ...prev.backup_services, noUnitsContact: e.target.value }
 }))}
-placeholder="Instructions when no units are available"
 />
 </div>
 <div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Mutual Aid Agreements</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Mutual Aid Agreements</label>
 <textarea
 rows="2"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={formData.backup_services.mutualAid}
 onChange={(e) => setFormData(prev => ({
 ...prev,
 backup_services: { ...prev.backup_services, mutualAid: e.target.value }
 }))}
-placeholder="Details about mutual aid agreements"
 />
 </div>
 </div>
@@ -1141,675 +1874,47 @@ placeholder="Details about mutual aid agreements"
 
 {/* County Information */}
 <div>
-<h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">County Information</h3>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>County Information</h3>
 <div className="mb-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">County</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>County</label>
 <input
 type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={formData.county_info.county}
 onChange={(e) => setFormData(prev => ({
 ...prev,
 county_info: { ...prev.county_info, county: e.target.value }
 }))}
-placeholder="County name"
 />
-</div>
-
-{/* Sheriff Agencies */}
-<div className="mb-4">
-<div className="flex justify-between items-center mb-3">
-<h4 className="font-medium text-gray-900">Sheriff Agencies</h4>
-<button
-type="button"
-onClick={() => addAgency('sheriffAgencies')}
-className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
->
-<Icon type="plus" className="mr-1" /> Add
-</button>
-</div>
-<div className="space-y-3">
-{formData.county_info.sheriffAgencies.map((agency, index) => (
-<div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
-<div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Agency Name</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={agency.name}
-onChange={(e) => handleAgencyChange('sheriffAgencies', index, 'name', e.target.value)}
-/>
-</div>
-<div className="md:col-span-3">
-<label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={agency.phone}
-onChange={(e) => handleAgencyChange('sheriffAgencies', index, 'phone', e.target.value)}
-/>
-</div>
-<div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={agency.description}
-onChange={(e) => handleAgencyChange('sheriffAgencies', index, 'description', e.target.value)}
-/>
-</div>
-<div className="md:col-span-1">
-{formData.county_info.sheriffAgencies.length > 1 && (
-<button
-type="button"
-onClick={() => removeAgency('sheriffAgencies', index)}
-className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
->
-<Icon type="trash" />
-</button>
-)}
-</div>
-</div>
-))}
-</div>
-</div>
-
-{/* Fire Agencies */}
-<div className="mb-4">
-<div className="flex justify-between items-center mb-3">
-<h4 className="font-medium text-gray-900">Fire Agencies</h4>
-<button
-type="button"
-onClick={() => addAgency('fireAgencies')}
-className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
->
-<Icon type="plus" className="mr-1" /> Add
-</button>
-</div>
-<div className="space-y-3">
-{formData.county_info.fireAgencies.map((agency, index) => (
-<div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
-<div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Agency Name</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={agency.name}
-onChange={(e) => handleAgencyChange('fireAgencies', index, 'name', e.target.value)}
-/>
-</div>
-<div className="md:col-span-3">
-<label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={agency.phone}
-onChange={(e) => handleAgencyChange('fireAgencies', index, 'phone', e.target.value)}
-/>
-</div>
-<div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={agency.description}
-onChange={(e) => handleAgencyChange('fireAgencies', index, 'description', e.target.value)}
-/>
-</div>
-<div className="md:col-span-1">
-{formData.county_info.fireAgencies.length > 1 && (
-<button
-type="button"
-onClick={() => removeAgency('fireAgencies', index)}
-className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
->
-<Icon type="trash" />
-</button>
-)}
-</div>
-</div>
-))}
-</div>
-</div>
-
-{/* EMS Agencies */}
-<div className="mb-4">
-<div className="flex justify-between items-center mb-3">
-<h4 className="font-medium text-gray-900">EMS Agencies</h4>
-<button
-type="button"
-onClick={() => addAgency('emsAgencies')}
-className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
->
-<Icon type="plus" className="mr-1" /> Add
-</button>
-</div>
-<div className="space-y-3">
-{formData.county_info.emsAgencies.map((agency, index) => (
-<div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
-<div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Agency Name </label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={agency.name}
-onChange={(e) => handleAgencyChange('emsAgencies', index, 'name', e.target.value)}
-/>
-</div>
-<div className="md:col-span-3">
-<label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={agency.phone}
-onChange={(e) => handleAgencyChange('emsAgencies', index, 'phone', e.target.value)}
-/>
-</div>
-<div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={agency.description}
-onChange={(e) => handleAgencyChange('emsAgencies', index, 'description', e.target.value)}
-/>
-</div>
-<div className="md:col-span-1">
-{formData.county_info.emsAgencies.length > 1 && (
-<button
-type="button"
-onClick={() => removeAgency('emsAgencies', index)}
-className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
->
-<Icon type="trash" />
-</button>
-)}
-</div>
-</div>
-))}
-</div>
 </div>
 </div>
 
 {/* Notes */}
 <div>
-<h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Additional Notes</h3>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 text-lg border-b ${borderClass} pb-2`}>Additional Notes</h3>
 <textarea
 rows="4"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={formData.notes}
 onChange={(e) => handleChange('notes', e.target.value)}
-placeholder="Any additional notes or information about this entity"
 />
 </div>
 
 {/* Last Contact */}
 <div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Last Contact Date</label>
+<label className={`block text-sm font-medium ${labelClass} mb-1`}>Last Contact Date</label>
 <input
 type="date"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputBgClass}`}
 value={formData.last_contact}
 onChange={(e) => handleChange('last_contact', e.target.value)}
 />
 </div>
 
 {/* Form Actions */}
-<div className="flex justify-end space-x-3 pt-4 border-t">
-<button
-type="button"
-onClick={onCancel}
-className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
->
-Cancel
-</button>
-<button
-type="submit"
-className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
->
-{entity ? 'Update Entity' : 'Add Entity'}
-</button>
-</div>
-</form>
-</div>
-);
-};
-
-// Payor Form Component
-const PayorForm = ({ payor, onSave, onCancel }) => {
-const [formData, setFormData] = useState({
-id: payor?.id || null,
-name: payor?.name || '',
-type: payor?.type || 'commercial',
-website: payor?.website || '',
-phone_numbers: payor?.phoneNumbers || [{ label: '', number: '', description: '' }],
-emergency_ground: payor?.emergencyGround || { phone: '', preauth_required: false, notes: '' },
-non_emergency_ground: payor?.nonEmergencyGround || { phone: '', preauth_required: false, notes: '' },
-rotor_wing: payor?.rotorWing || { phone: '', preauth_required: false, notes: '' },
-fixed_wing: payor?.fixedWing || { phone: '', preauth_required: false, notes: '' },
-reference_links: payor?.referenceLinks || [{ title: '', url: '', description: '' }],
-notes: payor?.notes || ''
-});
-
-const handleChange = (field, value) => {
-setFormData(prev => ({ ...prev, [field]: value }));
-};
-
-const handlePhoneChange = (index, field, value) => {
-const newPhones = [...formData.phone_numbers];
-newPhones[index] = { ...newPhones[index], [field]: value };
-setFormData(prev => ({ ...prev, phone_numbers: newPhones }));
-};
-
-const addPhoneField = () => {
-setFormData(prev => ({
-...prev,
-phone_numbers: [...prev.phone_numbers, { label: '', number: '', description: '' }]
-}));
-};
-
-const removePhoneField = (index) => {
-if (formData.phone_numbers.length <= 1) return;
-const newPhones = [...formData.phone_numbers];
-newPhones.splice(index, 1);
-setFormData(prev => ({ ...prev, phone_numbers: newPhones }));
-};
-
-const handleServiceChange = (serviceType, field, value) => {
-setFormData(prev => ({
-...prev,
-[serviceType]: { ...prev[serviceType], [field]: value }
-}));
-};
-
-const handleReferenceLinkChange = (index, field, value) => {
-const newLinks = [...formData.reference_links];
-newLinks[index] = { ...newLinks[index], [field]: value };
-setFormData(prev => ({ ...prev, reference_links: newLinks }));
-};
-
-const addReferenceLink = () => {
-setFormData(prev => ({
-...prev,
-reference_links: [...prev.reference_links, { title: '', url: '', description: '' }]
-}));
-};
-
-const removeReferenceLink = (index) => {
-if (formData.reference_links.length <= 1) return;
-const newLinks = [...formData.reference_links];
-newLinks.splice(index, 1);
-setFormData(prev => ({ ...prev, reference_links: newLinks }));
-};
-
-const handleSubmit = (e) => {
-e.preventDefault();
-onSave(formData);
-};
-
-return (
-<div className="bg-white rounded-lg shadow-lg overflow-hidden">
-<div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
-<h2 className="text-xl font-bold text-gray-900">
-{payor ? 'Edit Payor' : 'Add New Payor'}
-</h2>
-<button
-onClick={onCancel}
-className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-200"
->
-<Icon type="x" />
-</button>
-</div>
-<form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
-{/* Basic Information */}
-<div>
-<h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Basic Information</h3>
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-<div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={formData.name}
-onChange={(e) => handleChange('name', e.target.value)}
-required
-/>
-</div>
-<div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
-<select
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={formData.type}
-onChange={(e) => handleChange('type', e.target.value)}
-required
->
-<option value="commercial">Commercial Insurance</option>
-<option value="medicare">Medicare</option>
-<option value="medicaid">Medicaid</option>
-<option value="government">Government</option>
-<option value="workers_comp">Workers Compensation</option>
-<option value="auto">Auto Insurance</option>
-<option value="other">Other</option>
-</select>
-</div>
-<div className="md:col-span-2">
-<label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
-<input
-type="url"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={formData.website}
-onChange={(e) => handleChange('website', e.target.value)}
-placeholder="https://example.com"
-/>
-</div>
-</div>
-</div>
-
-{/* Phone Numbers */}
-<div>
-<div className="flex justify-between items-center mb-3">
-<h3 className="font-medium text-gray-900 text-lg border-b pb-2">Phone Numbers</h3>
-<button
-type="button"
-onClick={addPhoneField}
-className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center"
->
-<Icon type="plus" className="mr-1" /> Add
-</button>
-</div>
-<div className="space-y-3">
-{formData.phone_numbers.map((phone, index) => (
-<div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
-<div className="md:col-span-3">
-<label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={phone.label}
-onChange={(e) => handlePhoneChange(index, 'label', e.target.value)}
-placeholder="e.g., Main, Claims, Authorization"
-/>
-</div>
-<div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Number</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={phone.number}
-onChange={(e) => handlePhoneChange(index, 'number', e.target.value)}
-/>
-</div>
-<div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={phone.description}
-onChange={(e) => handlePhoneChange(index, 'description', e.target.value)}
-/>
-</div>
-<div className="md:col-span-1">
-{formData.phone_numbers.length > 1 && (
-<button
-type="button"
-onClick={() => removePhoneField(index)}
-className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
->
-<Icon type="trash" />
-</button>
-)}
-</div>
-</div>
-))}
-</div>
-</div>
-
-{/* Service Categories */}
-<div>
-<h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Service Categories</h3>
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-{/* Emergency Ground */}
-<div className="bg-gray-50 p-4 rounded-md">
-<h4 className="font-medium text-gray-900 mb-3">Emergency Ground</h4>
-<div className="space-y-3">
-<div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={formData.emergency_ground.phone}
-onChange={(e) => handleServiceChange('emergency_ground', 'phone', e.target.value)}
-/>
-</div>
-<div className="flex items-center">
-<input
-type="checkbox"
-id="emergencyGroundPreauth"
-className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-checked={formData.emergency_ground.preauth_required}
-onChange={(e) => handleServiceChange('emergency_ground', 'preauth_required', e.target.checked)}
-/>
-<label htmlFor="emergencyGroundPreauth" className="ml-2 block text-sm text-gray-900">
-Pre-authorization required
-</label>
-</div>
-<div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-<textarea
-rows="2"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={formData.emergency_ground.notes}
-onChange={(e) => handleServiceChange('emergency_ground', 'notes', e.target.value)}
-placeholder="Special instructions or notes"
-/>
-</div>
-</div>
-</div>
-
-{/* Non-Emergency Ground */}
-<div className="bg-gray-50 p-4 rounded-md">
-<h4 className="font-medium text-gray-900 mb-3">Non-Emergency Ground</h4>
-<div className="space-y-3">
-<div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={formData.non_emergency_ground.phone}
-onChange={(e) => handleServiceChange('non_emergency_ground', 'phone', e.target.value)}
-/>
-</div>
-<div className="flex items-center">
-<input
-type="checkbox"
-id="nonEmergencyGroundPreauth"
-className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-checked={formData.non_emergency_ground.preauth_required}
-onChange={(e) => handleServiceChange('non_emergency_ground', 'preauth_required', e.target.checked)}
-/>
-<label htmlFor="nonEmergencyGroundPreauth" className="ml-2 block text-sm text-gray-900">
-Pre-authorization required
-</label>
-</div>
-<div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-<textarea
-rows="2"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={formData.non_emergency_ground.notes}
-onChange={(e) => handleServiceChange('non_emergency_ground', 'notes', e.target.value)}
-placeholder="Special instructions or notes"
-/>
-</div>
-</div>
-</div>
-
-{/* Rotor Wing */}
-<div className="bg-gray-50 p-4 rounded-md">
-<h4 className="font-medium text-gray-900 mb-3">Rotor Wing</h4>
-<div className="space-y-3">
-<div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={formData.rotor_wing.phone}
-onChange={(e) => handleServiceChange('rotor_wing', 'phone', e.target.value)}
-/>
-</div>
-<div className="flex items-center">
-<input
-type="checkbox"
-id="rotorWingPreauth"
-className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-checked={formData.rotor_wing.preauth_required}
-onChange={(e) => handleServiceChange('rotor_wing', 'preauth_required', e.target.checked)}
-/>
-<label htmlFor="rotorWingPreauth" className="ml-2 block text-sm text-gray-900">
-Pre-authorization required
-</label>
-</div>
-<div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-<textarea
-rows="2"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={formData.rotor_wing.notes}
-onChange={(e) => handleServiceChange('rotor_wing', 'notes', e.target.value)}
-placeholder="Special instructions or notes"
-/>
-</div>
-</div>
-</div>
-
-{/* Fixed Wing */}
-<div className="bg-gray-50 p-4 rounded-md">
-<h4 className="font-medium text-gray-900 mb-3">Fixed Wing</h4>
-<div className="space-y-3">
-<div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={formData.fixed_wing.phone}
-onChange={(e) => handleServiceChange('fixed_wing', 'phone', e.target.value)}
-/>
-</div>
-<div className="flex items-center">
-<input
-type="checkbox"
-id="fixedWingPreauth"
-className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-checked={formData.fixed_wing.preauth_required}
-onChange={(e) => handleServiceChange('fixed_wing', 'preauth_required', e.target.checked)}
-/>
-<label htmlFor="fixedWingPreauth" className="ml-2 block text-sm text-gray-900">
-Pre-authorization required
-</label>
-</div>
-<div>
-<label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-<textarea
-rows="2"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={formData.fixed_wing.notes}
-onChange={(e) => handleServiceChange('fixed_wing', 'notes', e.target.value)}
-placeholder="Special instructions or notes"
-/>
-</div>
-</div>
-</div>
-</div>
-</div>
-
-{/* Reference Links */}
-<div>
-<div className="flex justify-between items-center mb-3">
-<h3 className="font-medium text-gray-900 text-lg border-b pb-2">Reference Links</h3>
-<button
-type="button"
-onClick={addReferenceLink}
-className="px-3 py-1 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors flex items-center text-sm"
->
-<Icon type="plus" className="mr-1" /> Add
-</button>
-</div>
-<div className="space-y-3">
-{formData.reference_links.map((link, index) => (
-<div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-gray-50 p-3 rounded-md">
-<div className="md:col-span-3">
-<label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={link.title}
-onChange={(e) => handleReferenceLinkChange(index, 'title', e.target.value)}
-placeholder="e.g., Authorization Form, Coverage Policy"
-/>
-</div>
-<div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
-<input
-type="url"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={link.url}
-onChange={(e) => handleReferenceLinkChange(index, 'url', e.target.value)}
-placeholder="https://example.com/document"
-/>
-</div>
-<div className="md:col-span-4">
-<label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-<input
-type="text"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={link.description}
-onChange={(e) => handleReferenceLinkChange(index, 'description', e.target.value)}
-placeholder="Brief description of the document"
-/>
-</div>
-<div className="md:col-span-1">
-{formData.reference_links.length > 1 && (
-<button
-type="button"
-onClick={() => removeReferenceLink(index)}
-className="px-2 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors w-full"
->
-<Icon type="trash" />
-</button>
-)}
-</div>
-</div>
-))}
-</div>
-</div>
-
-{/* Notes */}
-<div>
-<h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Additional Notes</h3>
-<textarea
-rows="4"
-className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-value={formData.notes}
-onChange={(e) => handleChange('notes', e.target.value)}
-placeholder="Any additional notes or information about this payor"
-/>
-</div>
-
-{/* Form Actions */}
-<div className="flex justify-end space-x-3 pt-4 border-t">
-<button
-type="button"
-onClick={onCancel}
-className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
->
-Cancel
-</button>
-<button
-type="submit"
-className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
->
-{payor ? 'Update Payor' : 'Add Payor'}
-</button>
+<div className={`flex justify-end space-x-3 pt-4 border-t ${borderClass}`}>
+<button type="button" onClick={onCancel} className={`px-4 py-2 border ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'} rounded-md transition-colors`}>Cancel</button>
+<button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">{entity ? 'Update' : 'Add'}</button>
 </div>
 </form>
 </div>
@@ -1819,26 +1924,26 @@ className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transit
 // If not authenticated to the portal, show login screen
 if (!isPortalAuthenticated) {
 return (
-<div className="min-h-screen gradient-bg flex items-center justify-center p-4">
-<div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
+<div className={`min-h-screen ${darkMode ? 'gradient-bg-dark' : 'gradient-bg'} flex items-center justify-center p-4`}>
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-8 rounded-lg shadow-xl max-w-md w-full`}>
 <div className="text-center mb-8">
-<h1 className="text-3xl font-bold text-gray-900 mb-2">Emergency Services Portal</h1>
-<p className="text-gray-600">Please enter your password to access the portal</p>
+<h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Haynes Communications Dispatch Reference Portal</h1>
+<p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Please enter your password to access the portal</p>
 </div>
 <form onSubmit={(e) => {
 e.preventDefault();
 handlePortalPasswordSubmit(document.getElementById('portalPassword').value);
 }}>
 <div className="mb-6">
-<label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+<label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>Password</label>
 <div className="relative">
-<div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${darkMode ? 'text-gray-400' : ''}`}>
 <Icon type="lock" />
 </div>
 <input
 type="password"
 id="portalPassword"
-className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`w-full pl-10 pr-3 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
 required
 />
 </div>
@@ -1850,8 +1955,8 @@ className="w-full px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 
 Access Portal
 </button>
 </form>
-<div className="mt-6 text-center text-sm text-gray-500">
-<p>© 2025 Emergency Services Portal. All rights reserved.</p>
+<div className={`mt-6 text-center text-sm ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+<p>© 2025 Haynes Communications. All rights reserved.</p>
 </div>
 </div>
 </div>
@@ -1859,20 +1964,22 @@ Access Portal
 }
 
 return (
-<div className="min-h-screen bg-gray-50">
+<div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
 {/* Header */}
-<header className="bg-white shadow-sm">
+<header className={`${darkMode ? 'bg-gray-800 shadow-lg' : 'bg-white shadow-sm'}`}>
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-<h1 className="text-2xl font-bold text-gray-900">Emergency Services Portal</h1>
+<h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Haynes Communications Dispatch Reference Portal</h1>
 <div className="flex items-center space-x-4">
 {lastSync && (
-<div className="text-sm text-gray-500 flex items-center">
+<div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'} flex items-center`}>
 <Icon type="sync" className="mr-1" />
 Last sync: {lastSync}
 </div>
 )}
 <button
-className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center"
+className={`px-3 py-2 rounded-md hover:bg-opacity-90 transition-colors flex items-center font-medium ${
+darkMode ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-blue-600 text-white hover:bg-blue-700'
+}`}
 onClick={() => {
 if (isAdminAuthenticated) {
 setShowAdmin(true);
@@ -1883,10 +1990,21 @@ setShowAdminPasswordModal(true);
 }}
 >
 <Icon type="plus" className="mr-1" />
-Add {activeTab === 'entities' ? 'Entity' : 'Payor'}
+Add {activeTab === 'entities' ? 'Entity' : activeTab === 'insurance' ? 'Payor' : 'Contact'}
 </button>
 <button
-className="px-3 py-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors flex items-center"
+className={`px-3 py-2 rounded-md transition-colors flex items-center ${
+darkMode ? 'bg-yellow-600 text-white hover:bg-yellow-700' : 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200'
+}`}
+onClick={() => setDarkMode(!darkMode)}
+title="Toggle dark mode"
+>
+<Icon type={darkMode ? "sun" : "moon"} className="mr-1" />
+</button>
+<button
+className={`px-3 py-2 rounded-md flex items-center transition-colors ${
+darkMode ? 'bg-red-700 text-white hover:bg-red-800' : 'bg-red-100 text-red-600 hover:bg-red-200'
+}`}
 onClick={() => setIsPortalAuthenticated(false)}
 >
 <Icon type="logout" className="mr-1" />
@@ -1897,37 +2015,55 @@ Logout
 
 {/* Tab Navigation */}
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-<div className="border-b border-gray-200">
+<div className={`border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
 <nav className="flex space-x-8" aria-label="Tabs">
 <button
 onClick={() => {
 setActiveTab('entities');
 setSelectedEntity(null);
 setSelectedPayor(null);
+setSelectedDirector(null);
 setSearchTerm('');
 }}
-className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
 activeTab === 'entities'
-? 'border-blue-500 text-blue-600'
-: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+? `border-blue-500 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`
+: `border-transparent ${darkMode ? 'text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
 }`}
 >
-Customer/Call Source ({entities.length})
+Customers/Call Source ({entities.length})
 </button>
 <button
 onClick={() => {
 setActiveTab('insurance');
 setSelectedEntity(null);
 setSelectedPayor(null);
+setSelectedDirector(null);
 setSearchTerm('');
 }}
-className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
 activeTab === 'insurance'
-? 'border-blue-500 text-blue-600'
-: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+? `border-blue-500 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`
+: `border-transparent ${darkMode ? 'text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
 }`}
 >
 Insurance Portal ({payors.length})
+</button>
+<button
+onClick={() => {
+setActiveTab('directors');
+setSelectedEntity(null);
+setSelectedPayor(null);
+setSelectedDirector(null);
+setSearchTerm('');
+}}
+className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+activeTab === 'directors'
+? `border-blue-500 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`
+: `border-transparent ${darkMode ? 'text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
+}`}
+>
+Directory/Contacts ({directors.length})
 </button>
 </nav>
 </div>
@@ -1938,53 +2074,83 @@ Insurance Portal ({payors.length})
 <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 {/* Search Bar */}
 <div className="mb-6">
-<div className="relative">
-<div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<div className="flex gap-3">
+<div className="relative flex-1">
+<div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${darkMode ? 'text-gray-400' : ''}`}>
 <Icon type="search" />
 </div>
 <input
 type="text"
-className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+className={`block w-full pl-10 pr-3 py-3 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+darkMode ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'
+}`}
 placeholder={activeTab === 'entities' ? 
 "Search entities by name, address, or type..." : 
-"Search payors by name or type..."
+activeTab === 'insurance' ?
+"Search payors by name or type..." :
+"Search directory by name, title, or department..."
 }
 value={searchTerm}
 onChange={(e) => setSearchTerm(e.target.value)}
 />
 </div>
+<button
+onClick={() => {
+if (activeTab === 'entities') {
+setLoading(true);
+loadEntities();
+} else if (activeTab === 'insurance') {
+setPayorsLoading(true);
+loadPayors();
+} else {
+setDirectorsLoading(true);
+loadDirectors();
+}
+}}
+className={`px-4 py-3 rounded-md hover:bg-opacity-90 transition-colors flex items-center font-medium ${
+darkMode ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-green-600 text-white hover:bg-green-700'
+}`}
+title="Refresh current tab"
+>
+<Icon type="sync" className="mr-2" />
+Refresh
+</button>
+</div>
 </div>
 
-{/* Content based on active tab */}
+{/* Entity Display */}
 {activeTab === 'entities' ? (
-// Entity display code
 loading ? (
 <div className="text-center py-10">
-<p className="text-gray-500">Loading entities...</p>
+<p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading entities...</p>
 </div>
 ) : (
 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 <div className="md:col-span-1 space-y-6">
 {Object.entries(groupedEntities).length > 0 ? (
 Object.entries(groupedEntities).map(([type, typeEntities]) => (
-<div key={type} className="bg-white rounded-lg shadow-sm overflow-hidden">
-<div className="bg-gray-50 px-4 py-3 border-b">
-<h2 className="text-lg font-medium text-gray-900 capitalize">
+<div key={type} className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden`}>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-4 py-3 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+<h2 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-900'} capitalize`}>
 {type.replace('_', ' ')}s ({typeEntities.length})
 </h2>
 </div>
-<ul className="divide-y divide-gray-200">
+<ul className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
 {typeEntities.map(entity => (
 <li
 key={entity.id}
-className={`px-4 py-3 cursor-pointer hover:bg-gray-50 entity-card ${selectedEntity && selectedEntity.id === entity.id ? 'bg-blue-50' : ''}`}
+className={`px-4 py-3 cursor-pointer entity-card ${
+selectedEntity && selectedEntity.id === entity.id 
+? darkMode ? 'bg-blue-900 bg-opacity-50' : 'bg-blue-50'
+: darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+}`}
 onClick={() => setSelectedEntity(entity)}
 >
 <div className="flex justify-between items-center">
-<div onClick={() => console.log('Entity data:', entity)}>
-<h3 className="text-sm font-medium text-gray-900">{entity.name}</h3>
+<div>
+<h3 className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{entity.name}</h3>
 {entity.address && (
-<p className="text-xs text-gray-500 flex items-center mt-1">
+<p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} flex items-center mt-1`}>
 <Icon type="map" className="mr-1" />
 {entity.address}
 </p>
@@ -1993,7 +2159,7 @@ onClick={() => setSelectedEntity(entity)}
 {isAdminAuthenticated && (
 <div className="flex space-x-1">
 <button
-className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
+className={`p-1 transition-colors ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'}`}
 onClick={(e) => {
 e.stopPropagation();
 handleEditEntity(entity);
@@ -2002,7 +2168,7 @@ handleEditEntity(entity);
 <Icon type="edit" />
 </button>
 <button
-className="p-1 text-red-600 hover:text-red-800 transition-colors"
+className={`p-1 transition-colors ${darkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-800'}`}
 onClick={(e) => {
 e.stopPropagation();
 handleDeleteEntity(entity.id);
@@ -2019,29 +2185,28 @@ handleDeleteEntity(entity.id);
 </div>
 ))
 ) : (
-<div className="bg-white rounded-lg shadow-sm p-6 text-center">
-<p className="text-gray-500">No entities found matching your search.</p>
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 text-center`}>
+<p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No entities found matching your search.</p>
 </div>
 )}
 </div>
 
 <div className="md:col-span-2">
 {selectedEntity ? (
-<div className="bg-white rounded-lg shadow-sm">
-<div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
-<h2 className="text-xl font-bold text-gray-900">{selectedEntity.name}</h2>
-{console.log('Selected entity for view:', selectedEntity)}
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden`}>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-6 py-4 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'} flex justify-between items-center`}>
+<h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedEntity.name}</h2>
 <div className="flex space-x-2">
 {isAdminAuthenticated && (
 <>
 <button
-className="px-3 py-1.5 bg-blue-100 text-blue-600 rounded-md flex items-center hover:bg-blue-200 transition-colors"
+className={`px-3 py-1.5 rounded-md flex items-center transition-colors ${darkMode ? 'bg-blue-700 text-blue-100 hover:bg-blue-600' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
 onClick={() => handleEditEntity(selectedEntity)}
 >
 <Icon type="edit" className="mr-1" /> Edit
 </button>
 <button
-className="px-3 py-1.5 bg-red-100 text-red-600 rounded-md flex items-center hover:bg-red-200 transition-colors"
+className={`px-3 py-1.5 rounded-md flex items-center transition-colors ${darkMode ? 'bg-red-700 text-red-100 hover:bg-red-600' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
 onClick={() => handleDeleteEntity(selectedEntity.id)}
 >
 <Icon type="trash" className="mr-1" /> Delete
@@ -2050,18 +2215,11 @@ onClick={() => handleDeleteEntity(selectedEntity.id)}
 )}
 </div>
 </div>
-<div className="p-6">
-{/* Entity detail display remains the same */}
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
 {/* Basic Information */}
-<div className="bg-gray-50 p-4 rounded-md shadow-sm">
-<h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-<Icon type={
-selectedEntity.type === 'hospital' ? 'building' : 
-selectedEntity.type === 'fire_station' ? 'alert' : 
-selectedEntity.type === '911_center' ? 'dispatch' : 
-'users'
-} className="mr-2" />
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md shadow-sm`}>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center text-lg`}>
+<Icon type="building" className="mr-2" />
 Basic Information
 </h3>
 <div className="space-y-3">
@@ -2070,8 +2228,8 @@ Basic Information
 <Icon type="building" />
 </div>
 <div>
-<p className="text-sm text-gray-500">Type</p>
-<p className="text-gray-900 capitalize">{selectedEntity.type.replace('_', ' ')}</p>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Type</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'} capitalize`}>{selectedEntity.type.replace('_', ' ')}</p>
 </div>
 </div>
 <div className="flex items-start">
@@ -2079,8 +2237,8 @@ Basic Information
 <Icon type="map" />
 </div>
 <div>
-<p className="text-sm text-gray-500">Address</p>
-<p className="text-gray-900">{selectedEntity.address || 'Not specified'}</p>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Address</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedEntity.address || 'Not specified'}</p>
 </div>
 </div>
 <div className="flex items-start">
@@ -2088,8 +2246,8 @@ Basic Information
 <Icon type="calendar" />
 </div>
 <div>
-<p className="text-sm text-gray-500">Last Contact</p>
-<p className="text-gray-900">{selectedEntity.lastContact || 'Not recorded'}</p>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Last Contact</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedEntity.lastContact || 'Not recorded'}</p>
 </div>
 </div>
 </div>
@@ -2097,20 +2255,20 @@ Basic Information
 
 {/* Phone Numbers */}
 {selectedEntity.phoneNumbers && selectedEntity.phoneNumbers.length > 0 && (
-<div className="bg-gray-50 p-4 rounded-md shadow-sm">
-<h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center text-lg`}>
 <Icon type="phone" className="mr-2" />
 Contact Information
 </h3>
-<div className="space-y-4">
+<div className="space-y-2">
 {selectedEntity.phoneNumbers.map((phone, index) => (
-<div key={index} className="bg-white p-3 rounded-md shadow-sm">
+<div key={index} className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
 <div className="flex justify-between items-center mb-1">
-<span className="font-medium text-gray-900">{phone.label || 'Unlabeled'}</span>
+<span className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{phone.label || 'Unlabeled'}</span>
 <span className="font-mono text-blue-600">{phone.number}</span>
 </div>
 {phone.description && (
-<p className="text-sm text-gray-600">{phone.description}</p>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{phone.description}</p>
 )}
 </div>
 ))}
@@ -2120,294 +2278,174 @@ Contact Information
 
 {/* Contracted Service */}
 {selectedEntity.contractedService && (
-<div className="bg-gray-50 p-4 rounded-md shadow-sm">
-<h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-<Icon type="truck" className="mr-2" />
-Contracted Service
-</h3>
-<p className="text-gray-900 font-medium">{selectedEntity.contractedService}</p>
-
-{selectedEntity.contractualObligations && selectedEntity.contractualObligations.length > 0 && (
-<div className="mt-3">
-<h4 className="text-sm font-medium text-gray-700 mb-1">Contractual Obligations</h4>
-<ul className="list-disc pl-5 space-y-1">
-{selectedEntity.contractualObligations.map((obligation, index) => (
-<li key={index} className="text-gray-700">{obligation}</li>
-))}
-</ul>
-</div>
-)}
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Contracted Service</h3>
+<p className={`${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-50 text-gray-700'} p-3 rounded-md`}>{selectedEntity.contractedService}</p>
 </div>
 )}
 
 {/* ER Entrance */}
-{selectedEntity.type === 'hospital' && selectedEntity.erEntrance && (
-<div className="bg-gray-50 p-4 rounded-md shadow-sm">
-<h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-<Icon type="alert" className="mr-2" />
-ER Entrance
-</h3>
-<p className="text-gray-700 bg-yellow-50 p-3 rounded-md">{selectedEntity.erEntrance}</p>
+{selectedEntity.erEntrance && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>ER Entrance</h3>
+<p className={`${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-50 text-gray-700'} p-3 rounded-md whitespace-pre-wrap`}>{selectedEntity.erEntrance}</p>
 </div>
 )}
 
 {/* Flight Program */}
-<div className="bg-gray-50 p-4 rounded-md shadow-sm">
-<h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
+{selectedEntity.flightProgram && (selectedEntity.flightProgram.isOneCall || selectedEntity.flightProgram.participating || selectedEntity.flightProgram.flightByGround) && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2 flex items-center`}>
 <Icon type="plane" className="mr-2" />
 Flight Program
 </h3>
-<div className="space-y-3">
-<div className="flex items-center">
-<div className="w-8 flex-shrink-0">
-{selectedEntity.flightProgram?.isOneCall ? (
-<div className="h-4 w-4 bg-green-500 rounded-full"></div>
-) : (
-<div className="h-4 w-4 bg-gray-300 rounded-full"></div>
-)}
-</div>
-<p className="text-gray-700">One Call</p>
-</div>
-<div className="flex items-center">
-<div className="w-8 flex-shrink-0">
-{selectedEntity.flightProgram?.participating ? (
-<div className="h-4 w-4 bg-green-500 rounded-full"></div>
-) : (
-<div className="h-4 w-4 bg-gray-300 rounded-full"></div>
-)}
-</div>
-<p className="text-gray-700">Participating</p>
-</div>
-<div className="flex items-center">
-<div className="w-8 flex-shrink-0">
-{selectedEntity.flightProgram?.flightByGround ? (
-<div className="h-4 w-4 bg-green-500 rounded-full"></div>
-) : (
-<div className="h-4 w-4 bg-gray-300 rounded-full"></div>
-)}
-</div>
-<p className="text-gray-700">Flight By Ground</p>
-</div>
-{selectedEntity.flightProgram?.notes && (
-<div className="mt-2">
-<p className="text-sm text-gray-500">Notes</p>
-<p className="text-gray-700 bg-blue-50 p-2 rounded-md">{selectedEntity.flightProgram.notes}</p>
-</div>
-)}
-
-{/* Landing Zones for 911 Centers */}
-{selectedEntity.type === '911_center' && selectedEntity.flightProgram?.landingZones && selectedEntity.flightProgram.landingZones.length > 0 && (
-<div className="mt-4">
-<h4 className="text-md font-medium text-gray-900 mb-2">Known Landing Zones</h4>
-<div className="space-y-3">
-{selectedEntity.flightProgram.landingZones.map((zone, index) => (
-<div key={index} className="bg-white p-3 rounded-md shadow-sm">
-<div className="flex items-center mb-1">
-<Icon type="location" className="mr-2" />
-<span className="font-medium text-gray-900">{zone.name}</span>
-</div>
-{zone.coordinates && (
-<p className="text-sm text-gray-600 font-mono mb-1">Coordinates: {zone.coordinates}</p>
-)}
-{zone.description && (
-<p className="text-sm text-gray-600">{zone.description}</p>
-)}
-</div>
-))}
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md space-y-2`}>
+{selectedEntity.flightProgram.isOneCall && <div className="flex items-center"><span className="text-green-600 mr-2">✓</span> One Call</div>}
+{selectedEntity.flightProgram.participating && <div className="flex items-center"><span className="text-green-600 mr-2">✓</span> Participating</div>}
+{selectedEntity.flightProgram.flightByGround && <div className="flex items-center"><span className="text-green-600 mr-2">✓</span> Flight By Ground</div>}
+{selectedEntity.flightProgram.notes && <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{selectedEntity.flightProgram.notes}</p>}
 </div>
 </div>
 )}
-</div>
-</div>
 
 {/* Backup Services */}
-<div className="bg-gray-50 p-4 rounded-md shadow-sm">
-<h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-<Icon type="alert" className="mr-2" />
-Backup Services
+{selectedEntity.backupServices && (selectedEntity.backupServices.airServices.length > 0 || selectedEntity.backupServices.groundServices.length > 0) && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Backup Services</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md space-y-3`}>
+{selectedEntity.backupServices.airServices.length > 0 && (
+<div>
+<p className={`font-medium ${darkMode ? 'text-blue-300' : 'text-blue-600'} mb-2`}>Air Services</p>
+<div className="space-y-1">
+{selectedEntity.backupServices.airServices.map((svc, idx) => svc.name && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+{svc.name} {svc.phone && `- ${svc.phone}`}
+</div>
+))}
+</div>
+</div>
+)}
+{selectedEntity.backupServices.groundServices.length > 0 && (
+<div>
+<p className={`font-medium ${darkMode ? 'text-blue-300' : 'text-blue-600'} mb-2`}>Ground Services</p>
+<div className="space-y-1">
+{selectedEntity.backupServices.groundServices.map((svc, idx) => svc.name && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+{svc.name} {svc.phone && `- ${svc.phone}`}
+</div>
+))}
+</div>
+</div>
+)}
+</div>
+</div>
+)}
+
+{/* Contractual Obligations */}
+{selectedEntity.contractualObligations && selectedEntity.contractualObligations.length > 0 && selectedEntity.contractualObligations[0] && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Contractual Obligations</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md space-y-2`}>
+{selectedEntity.contractualObligations.map((obligation, idx) => obligation && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>
+• {obligation}
+</div>
+))}
+</div>
+</div>
+)}
+
+{/* Landing Zones */}
+{selectedEntity.type === '911_center' && selectedEntity.flightProgram && selectedEntity.flightProgram.landingZones && selectedEntity.flightProgram.landingZones.length > 0 && selectedEntity.flightProgram.landingZones[0].name && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2 flex items-center`}>
+<Icon type="location" className="mr-2" />
+Known Landing Zones
 </h3>
-<div className="space-y-4">
-{/* Air Services */}
-{selectedEntity.backupServices?.airServices && selectedEntity.backupServices.airServices.length > 0 && (
-<div>
-<h4 className="text-md font-medium text-gray-900 mb-2">Air Services</h4>
-<div className="space-y-3">
-{selectedEntity.backupServices.airServices.map((service, index) => (
-<div key={index} className="bg-white p-3 rounded-md shadow-sm">
-<div className="flex justify-between items-center mb-1">
-<span className="font-medium text-gray-900">{service.name}</span>
-{service.phone && (
-<span className="font-mono text-blue-600">{service.phone}</span>
-)}
-</div>
-{service.description && (
-<p className="text-sm text-gray-600">{service.description}</p>
-)}
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md space-y-3`}>
+{selectedEntity.flightProgram.landingZones.map((zone, idx) => zone.name && (
+<div key={idx} className="border-l-2 border-blue-500 pl-3">
+<p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{zone.name}</p>
+{zone.coordinates && <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Coordinates: {zone.coordinates}</p>}
+{zone.description && <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{zone.description}</p>}
 </div>
 ))}
 </div>
 </div>
 )}
-
-{/* Ground Services */}
-{selectedEntity.backupServices?.groundServices && selectedEntity.backupServices.groundServices.length > 0 && (
-<div>
-<h4 className="text-md font-medium text-gray-900 mb-2">Ground Services</h4>
-<div className="space-y-3">
-{selectedEntity.backupServices.groundServices.map((service, index) => (
-<div key={index} className="bg-white p-3 rounded-md shadow-sm">
-<div className="flex justify-between items-center mb-1">
-<span className="font-medium text-gray-900">{service.name}</span>
-{service.phone && (
-<span className="font-mono text-blue-600">{service.phone}</span>
-)}
-</div>
-{service.description && (
-<p className="text-sm text-gray-600">{service.description}</p>
-)}
-</div>
-))}
-</div>
-</div>
-)}
-
-{selectedEntity.backupServices?.noUnitsContact && (
-<div>
-<h4 className="text-sm font-medium text-gray-700 mb-1">No Units Contact Protocol</h4>
-<p className="text-gray-700 bg-red-50 p-3 rounded-md font-medium">{selectedEntity.backupServices.noUnitsContact}</p>
-</div>
-)}
-
-{selectedEntity.backupServices?.mutualAid && (
-<div>
-<h4 className="text-sm font-medium text-gray-700 mb-1">Mutual Aid Agreements</h4>
-<p className="text-gray-700 bg-yellow-50 p-3 rounded-md font-medium">{selectedEntity.backupServices.mutualAid}</p>
-</div>
-)}
-
-{!selectedEntity.backupServices?.airServices?.length && 
-!selectedEntity.backupServices?.groundServices?.length && 
-!selectedEntity.backupServices?.noUnitsContact && 
-!selectedEntity.backupServices?.mutualAid && (
-<p className="text-gray-500 italic">No backup services specified</p>
-)}
-</div>
-</div>
 
 {/* County Information */}
-<div className="bg-gray-50 p-4 rounded-md shadow-sm">
-<h3 className="font-medium text-gray-900 mb-3 flex items-center text-lg border-b pb-2">
-<Icon type="map" className="mr-2" />
-County Information
-</h3>
-
-{selectedEntity.countyInfo?.county && (
-<div className="mb-4">
-<p className="text-sm text-gray-500">County</p>
-<p className="font-medium text-gray-900">{selectedEntity.countyInfo.county}</p>
+{selectedEntity.countyInfo && selectedEntity.countyInfo.county && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>County Information</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md space-y-3`}>
+<div>
+<p className={`font-medium ${darkMode ? 'text-blue-300' : 'text-blue-600'}`}>{selectedEntity.countyInfo.county}</p>
 </div>
-)}
-
-{/* Sheriff Agencies */}
-{selectedEntity.countyInfo?.sheriffAgencies && selectedEntity.countyInfo.sheriffAgencies.length > 0 && (
-<div className="mb-4">
-<h4 className="text-md font-medium text-gray-900 mb-2">Sheriff Agencies</h4>
-<div className="space-y-3">
-{selectedEntity.countyInfo.sheriffAgencies.map((agency, index) => (
-<div key={index} className="bg-white p-3 rounded-md shadow-sm">
-<div className="flex justify-between items-center mb-1">
-<span className="font-medium text-gray-900">{agency.name}</span>
-{agency.phone && (
-<span className="font-mono text-blue-600">{agency.phone}</span>
-)}
-</div>
-{agency.description && (
-<p className="text-sm text-gray-600">{agency.description}</p>
-)}
+{selectedEntity.countyInfo.sheriffAgencies && selectedEntity.countyInfo.sheriffAgencies.length > 0 && selectedEntity.countyInfo.sheriffAgencies[0].name && (
+<div>
+<p className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Sheriff Agencies</p>
+<div className="space-y-1">
+{selectedEntity.countyInfo.sheriffAgencies.map((agency, idx) => agency.name && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+{agency.name} {agency.phone && `- ${agency.phone}`}
 </div>
 ))}
 </div>
 </div>
 )}
-
-{/* Fire Agencies */}
-{selectedEntity.countyInfo?.fireAgencies && selectedEntity.countyInfo.fireAgencies.length > 0 && (
-<div className="mb-4">
-<h4 className="text-md font-medium text-gray-900 mb-2">Fire Agencies</h4>
-<div className="space-y-3">
-{selectedEntity.countyInfo.fireAgencies.map((agency, index) => (
-<div key={index} className="bg-white p-3 rounded-md shadow-sm">
-<div className="flex justify-between items-center mb-1">
-<span className="font-medium text-gray-900">{agency.name}</span>
-{agency.phone && (
-<span className="font-mono text-blue-600">{agency.phone}</span>
-)}
-</div>
-{agency.description && (
-<p className="text-sm text-gray-600">{agency.description}</p>
-)}
+{selectedEntity.countyInfo.fireAgencies && selectedEntity.countyInfo.fireAgencies.length > 0 && selectedEntity.countyInfo.fireAgencies[0].name && (
+<div>
+<p className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Fire Agencies</p>
+<div className="space-y-1">
+{selectedEntity.countyInfo.fireAgencies.map((agency, idx) => agency.name && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+{agency.name} {agency.phone && `- ${agency.phone}`}
 </div>
 ))}
 </div>
 </div>
 )}
-
-{/* EMS Agencies */}
-{selectedEntity.countyInfo?.emsAgencies && selectedEntity.countyInfo.emsAgencies.length > 0 && (
-<div className="mb-4">
-<h4 className="text-md font-medium text-gray-900 mb-2">EMS Agencies</h4>
-<div className="space-y-3">
-{selectedEntity.countyInfo.emsAgencies.map((agency, index) => (
-<div key={index} className="bg-white p-3 rounded-md shadow-sm">
-<div className="flex justify-between items-center mb-1">
-<span className="font-medium text-gray-900">{agency.name}</span>
-{agency.phone && (
-<span className="font-mono text-blue-600">{agency.phone}</span>
-)}
-</div>
-{agency.description && (
-<p className="text-sm text-gray-600">{agency.description}</p>
-)}
+{selectedEntity.countyInfo.emsAgencies && selectedEntity.countyInfo.emsAgencies.length > 0 && selectedEntity.countyInfo.emsAgencies[0].name && (
+<div>
+<p className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>EMS Agencies</p>
+<div className="space-y-1">
+{selectedEntity.countyInfo.emsAgencies.map((agency, idx) => agency.name && (
+<div key={idx} className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+{agency.name} {agency.phone && `- ${agency.phone}`}
 </div>
 ))}
 </div>
 </div>
 )}
-
-{!selectedEntity.countyInfo?.county && 
-!selectedEntity.countyInfo?.sheriffAgencies?.length && 
-!selectedEntity.countyInfo?.fireAgencies?.length && 
-!selectedEntity.countyInfo?.emsAgencies?.length && (
-<p className="text-gray-500 italic">No county information specified</p>
+</div>
+</div>
 )}
-</div>
-</div>
 
 {/* Notes */}
 {selectedEntity.notes && (
-<div className="mt-6 bg-gray-50 p-4 rounded-md shadow-sm">
-<h3 className="font-medium text-gray-900 mb-3 text-lg border-b pb-2">Additional Notes</h3>
-<p className="text-gray-700 whitespace-pre-wrap">{selectedEntity.notes}</p>
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Notes</h3>
+<p className={`${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-50 text-gray-700'} p-3 rounded-md whitespace-pre-wrap`}>{selectedEntity.notes}</p>
 </div>
 )}
 </div>
 </div>
 ) : (
-<div className="bg-white rounded-lg shadow-sm p-6 text-center">
-<p className="text-gray-500">Select an entity from the list to view details</p>
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 text-center`}>
+<p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Select an entity to view details</p>
 </div>
 )}
 </div>
 </div>
 )
-) : (
-// Insurance Portal Tab 
+) : activeTab === 'insurance' ? (
+// Insurance Portal
 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-{/* Left Column: Payor List */}
 <div className="md:col-span-1">
-<div className="bg-white rounded-lg shadow-sm overflow-hidden">
-<div className="bg-gray-50 px-4 py-3 border-b">
-<h2 className="text-lg font-medium text-gray-900">
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden`}>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-4 py-3 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+<h2 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
 Insurance Payors ({filteredPayors.length})
 </h2>
 </div>
@@ -2418,124 +2456,111 @@ filteredPayors.map((payor, index) => (
 key={payor.id || index} 
 className={`p-3 rounded-md cursor-pointer transition-colors ${
 selectedPayor && selectedPayor.id === payor.id 
-? 'bg-blue-50 border border-blue-200' 
-: 'hover:bg-gray-50 border border-transparent'
+? darkMode ? 'bg-blue-900 border border-blue-700' : 'bg-blue-50 border border-blue-200'
+: darkMode ? 'hover:bg-gray-700 border border-transparent' : 'hover:bg-gray-50 border border-transparent'
 }`}
 onClick={() => setSelectedPayor(payor)}
 >
 <div className="flex justify-between items-center">
 <div>
-<div className="font-medium text-gray-900">{payor.name}</div>
-<div className="text-sm text-gray-600 capitalize">{payor.type?.replace('_', ' ')}</div>
+<div className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{payor.name}</div>
+<div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} capitalize`}>{payor.type?.replace('_', ' ')}</div>
 </div>
 {isAdminAuthenticated && (
 <div className="flex space-x-1">
-<button
-className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
-onClick={(e) => {
-e.stopPropagation();
-handleEditPayor(payor);
-}}
->
-<Icon type="edit" />
-</button>
-<button
-className="p-1 text-red-600 hover:text-red-800 transition-colors"
-onClick={(e) => {
-e.stopPropagation();
-handleDeletePayor(payor.id);
-}}
->
-<Icon type="trash" />
-</button>
+<button className={`p-1 transition-colors ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'}`} onClick={(e) => { e.stopPropagation(); handleEditPayor(payor); }}><Icon type="edit" /></button>
+<button className={`p-1 transition-colors ${darkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-800'}`} onClick={(e) => { e.stopPropagation(); handleDeletePayor(payor.id); }}><Icon type="trash" /></button>
 </div>
 )}
 </div>
 </div>
 ))
 ) : (
-<div className="p-4 text-center text-gray-500">No payors found</div>
+<div className={`p-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No payors found</div>
 )}
-</div>
-<div className="p-3 border-t bg-gray-50">
-<button
-onClick={loadPayors}
-className="w-full px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
->
-Refresh Data
-</button>
 </div>
 </div>
 </div>
 
-{/* Right Column: Payor Details */}
 <div className="md:col-span-2">
 {selectedPayor ? (
-<div className="bg-white rounded-lg shadow-sm">
-<div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden`}>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-6 py-4 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'} flex justify-between items-center`}>
 <div>
-<h2 className="text-xl font-bold text-gray-900">{selectedPayor.name}</h2>
-<p className="text-sm text-gray-600 capitalize mt-1">{selectedPayor.type?.replace('_', ' ')}</p>
+<h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedPayor.name}</h2>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} capitalize mt-1`}>{selectedPayor.type?.replace('_', ' ')}</p>
 </div>
-<div className="flex space-x-2">
 {isAdminAuthenticated && (
-<>
+<div className="flex space-x-2">
 <button
-className="px-3 py-1.5 bg-blue-100 text-blue-600 rounded-md flex items-center hover:bg-blue-200 transition-colors"
+className={`px-3 py-1.5 rounded-md flex items-center transition-colors ${darkMode ? 'bg-blue-700 text-blue-100 hover:bg-blue-600' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
 onClick={() => handleEditPayor(selectedPayor)}
 >
 <Icon type="edit" className="mr-1" /> Edit
 </button>
 <button
-className="px-3 py-1.5 bg-red-100 text-red-600 rounded-md flex items-center hover:bg-red-200 transition-colors"
+className={`px-3 py-1.5 rounded-md flex items-center transition-colors ${darkMode ? 'bg-red-700 text-red-100 hover:bg-red-600' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
 onClick={() => handleDeletePayor(selectedPayor.id)}
 >
 <Icon type="trash" className="mr-1" /> Delete
 </button>
-</>
+</div>
 )}
 </div>
+<div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+{/* Basic Information */}
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md shadow-sm`}>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center text-lg`}>
+<Icon type="building" className="mr-2" />
+Basic Information
+</h3>
+<div className="space-y-3">
+<div className="flex items-start">
+<div className="w-8 flex-shrink-0 flex justify-center">
+<Icon type="tag" />
 </div>
-<div className="p-6 space-y-6">
-{/* Basic Info */}
 <div>
-<h3 className="font-medium text-gray-900 mb-3">Basic Information</h3>
-<div className="bg-gray-50 p-4 rounded-md">
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-<div>
-<p className="text-sm font-medium text-gray-500">Type</p>
-<p className="text-gray-900 capitalize">{selectedPayor.type?.replace('_', ' ')}</p>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Type</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'} capitalize`}>{selectedPayor.type?.replace('_', ' ')}</p>
+</div>
 </div>
 {selectedPayor.website && (
+<div className="flex items-start">
+<div className="w-8 flex-shrink-0 flex justify-center">
+<Icon type="globe" />
+</div>
 <div>
-<p className="text-sm font-medium text-gray-500">Website</p>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Website</p>
 <a 
 href={selectedPayor.website} 
 target="_blank" 
 rel="noopener noreferrer"
-className="text-blue-600 hover:text-blue-800 underline"
+className="text-blue-600 hover:text-blue-800 underline break-all"
 >
-Visit Website
+{selectedPayor.website}
 </a>
 </div>
-)}
 </div>
+)}
 </div>
 </div>
 
 {/* Phone Numbers */}
 {selectedPayor.phoneNumbers && selectedPayor.phoneNumbers.length > 0 && (
 <div>
-<h3 className="font-medium text-gray-900 mb-3">Contact Information</h3>
-<div className="space-y-3">
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center text-lg`}>
+<Icon type="phone" className="mr-2" />
+Phone Numbers
+</h3>
+<div className="space-y-2">
 {selectedPayor.phoneNumbers.map((phone, index) => (
-<div key={index} className="bg-gray-50 p-4 rounded-md">
-<div className="flex justify-between items-center">
-<span className="font-medium text-gray-900">{phone.label || 'Phone'}</span>
+<div key={index} className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
+<div className="flex justify-between items-center mb-1">
+<span className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{phone.label || 'Phone'}</span>
 <span className="font-mono text-blue-600">{phone.number}</span>
 </div>
 {phone.description && (
-<p className="text-sm text-gray-600 mt-1">{phone.description}</p>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{phone.description}</p>
 )}
 </div>
 ))}
@@ -2543,97 +2568,136 @@ Visit Website
 </div>
 )}
 
-{/* Service Categories */}
-<div>
-<h3 className="font-medium text-gray-900 mb-3">Service Categories</h3>
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 {/* Emergency Ground */}
-<div className="bg-gray-50 p-4 rounded-md">
-<h4 className="font-medium text-gray-900 mb-2">Emergency Ground</h4>
-{selectedPayor.emergencyGround?.phone && (
-<p className="text-sm text-gray-600">Phone: <span className="font-mono text-blue-600">{selectedPayor.emergencyGround.phone}</span></p>
+{selectedPayor.emergencyGround && (selectedPayor.emergencyGround.phone || selectedPayor.emergencyGround.preauth_required || selectedPayor.emergencyGround.notes) && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3`}>Emergency Ground Transport</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md space-y-2`}>
+{selectedPayor.emergencyGround.phone && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Phone</p>
+<p className={`font-mono text-blue-600`}>{selectedPayor.emergencyGround.phone}</p>
+</div>
 )}
-{selectedPayor.emergencyGround?.preauth_required && (
-<p className="text-sm text-red-600 font-medium">Pre-authorization required</p>
+{selectedPayor.emergencyGround.preauth_required && (
+<div className="flex items-center text-orange-600">
+<span className="mr-2">⚠️</span> Pre-authorization Required
+</div>
 )}
-{selectedPayor.emergencyGround?.notes && (
-<p className="text-sm text-gray-600 mt-1">{selectedPayor.emergencyGround.notes}</p>
-)}
-{!selectedPayor.emergencyGround?.phone && !selectedPayor.emergencyGround?.notes && (
-<p className="text-sm text-gray-500">No details available</p>
+{selectedPayor.emergencyGround.notes && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notes</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedPayor.emergencyGround.notes}</p>
+</div>
 )}
 </div>
+</div>
+)}
 
 {/* Non-Emergency Ground */}
-<div className="bg-gray-50 p-4 rounded-md">
-<h4 className="font-medium text-gray-900 mb-2">Non-Emergency Ground</h4>
-{selectedPayor.nonEmergencyGround?.phone && (
-<p className="text-sm text-gray-600">Phone: <span className="font-mono text-blue-600">{selectedPayor.nonEmergencyGround.phone}</span></p>
+{selectedPayor.nonEmergencyGround && (selectedPayor.nonEmergencyGround.phone || selectedPayor.nonEmergencyGround.preauth_required || selectedPayor.nonEmergencyGround.notes) && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3`}>Non-Emergency Ground Transport</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md space-y-2`}>
+{selectedPayor.nonEmergencyGround.phone && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Phone</p>
+<p className={`font-mono text-blue-600`}>{selectedPayor.nonEmergencyGround.phone}</p>
+</div>
 )}
-{selectedPayor.nonEmergencyGround?.preauth_required && (
-<p className="text-sm text-red-600 font-medium">Pre-authorization required</p>
+{selectedPayor.nonEmergencyGround.preauth_required && (
+<div className="flex items-center text-orange-600">
+<span className="mr-2">⚠️</span> Pre-authorization Required
+</div>
 )}
-{selectedPayor.nonEmergencyGround?.notes && (
-<p className="text-sm text-gray-600 mt-1">{selectedPayor.nonEmergencyGround.notes}</p>
-)}
-{!selectedPayor.nonEmergencyGround?.phone && !selectedPayor.nonEmergencyGround?.notes && (
-<p className="text-sm text-gray-500">No details available</p>
+{selectedPayor.nonEmergencyGround.notes && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notes</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedPayor.nonEmergencyGround.notes}</p>
+</div>
 )}
 </div>
+</div>
+)}
 
 {/* Rotor Wing */}
-<div className="bg-gray-50 p-4 rounded-md">
-<h4 className="font-medium text-gray-900 mb-2">Rotor Wing</h4>
-{selectedPayor.rotorWing?.phone && (
-<p className="text-sm text-gray-600">Phone: <span className="font-mono text-blue-600">{selectedPayor.rotorWing.phone}</span></p>
+{selectedPayor.rotorWing && (selectedPayor.rotorWing.phone || selectedPayor.rotorWing.preauth_required || selectedPayor.rotorWing.notes) && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center`}>
+<Icon type="plane" className="mr-2" />
+Rotor Wing (Helicopter)
+</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md space-y-2`}>
+{selectedPayor.rotorWing.phone && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Phone</p>
+<p className={`font-mono text-blue-600`}>{selectedPayor.rotorWing.phone}</p>
+</div>
 )}
-{selectedPayor.rotorWing?.preauth_required && (
-<p className="text-sm text-red-600 font-medium">Pre-authorization required</p>
+{selectedPayor.rotorWing.preauth_required && (
+<div className="flex items-center text-orange-600">
+<span className="mr-2">⚠️</span> Pre-authorization Required
+</div>
 )}
-{selectedPayor.rotorWing?.notes && (
-<p className="text-sm text-gray-600 mt-1">{selectedPayor.rotorWing.notes}</p>
-)}
-{!selectedPayor.rotorWing?.phone && !selectedPayor.rotorWing?.notes && (
-<p className="text-sm text-gray-500">No details available</p>
+{selectedPayor.rotorWing.notes && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notes</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedPayor.rotorWing.notes}</p>
+</div>
 )}
 </div>
+</div>
+)}
 
 {/* Fixed Wing */}
-<div className="bg-gray-50 p-4 rounded-md">
-<h4 className="font-medium text-gray-900 mb-2">Fixed Wing</h4>
-{selectedPayor.fixedWing?.phone && (
-<p className="text-sm text-gray-600">Phone: <span className="font-mono text-blue-600">{selectedPayor.fixedWing.phone}</span></p>
+{selectedPayor.fixedWing && (selectedPayor.fixedWing.phone || selectedPayor.fixedWing.preauth_required || selectedPayor.fixedWing.notes) && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center`}>
+<Icon type="plane" className="mr-2" />
+Fixed Wing (Airplane)
+</h3>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md space-y-2`}>
+{selectedPayor.fixedWing.phone && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Phone</p>
+<p className={`font-mono text-blue-600`}>{selectedPayor.fixedWing.phone}</p>
+</div>
 )}
-{selectedPayor.fixedWing?.preauth_required && (
-<p className="text-sm text-red-600 font-medium">Pre-authorization required</p>
+{selectedPayor.fixedWing.preauth_required && (
+<div className="flex items-center text-orange-600">
+<span className="mr-2">⚠️</span> Pre-authorization Required
+</div>
 )}
-{selectedPayor.fixedWing?.notes && (
-<p className="text-sm text-gray-600 mt-1">{selectedPayor.fixedWing.notes}</p>
-)}
-{!selectedPayor.fixedWing?.phone && !selectedPayor.fixedWing?.notes && (
-<p className="text-sm text-gray-500">No details available</p>
+{selectedPayor.fixedWing.notes && (
+<div>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notes</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedPayor.fixedWing.notes}</p>
+</div>
 )}
 </div>
 </div>
-</div>
+)}
 
 {/* Reference Links */}
-{selectedPayor.referenceLinks && selectedPayor.referenceLinks.length > 0 && (
+{selectedPayor.referenceLinks && selectedPayor.referenceLinks.length > 0 && selectedPayor.referenceLinks[0].url && (
 <div>
-<h3 className="font-medium text-gray-900 mb-3">Reference Links</h3>
-<div className="space-y-3">
-{selectedPayor.referenceLinks.map((link, index) => (
-<div key={index} className="bg-gray-50 p-4 rounded-md">
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 flex items-center`}>
+<Icon type="globe" className="mr-2" />
+Reference Links
+</h3>
+<div className="space-y-2">
+{selectedPayor.referenceLinks.map((link, idx) => link.url && (
+<div key={idx} className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
 <a 
 href={link.url} 
 target="_blank" 
 rel="noopener noreferrer"
-className="font-medium text-blue-600 hover:text-blue-800 underline"
+className="text-blue-600 hover:text-blue-800 underline font-medium break-all"
 >
-{link.title || 'Document Link'}
+{link.title || link.url}
 </a>
 {link.description && (
-<p className="text-sm text-gray-600 mt-1">{link.description}</p>
+<p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>{link.description}</p>
 )}
 </div>
 ))}
@@ -2644,22 +2708,181 @@ className="font-medium text-blue-600 hover:text-blue-800 underline"
 {/* Notes */}
 {selectedPayor.notes && (
 <div>
-<h3 className="font-medium text-gray-900 mb-3">Additional Notes</h3>
-<div className="bg-gray-50 p-4 rounded-md">
-<p className="text-gray-700 whitespace-pre-wrap">{selectedPayor.notes}</p>
-</div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Notes</h3>
+<p className={`${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-50 text-gray-700'} p-3 rounded-md whitespace-pre-wrap`}>{selectedPayor.notes}</p>
 </div>
 )}
 </div>
 </div>
 ) : (
-<div className="bg-white rounded-lg shadow-sm p-6 text-center">
-<p className="text-gray-500">Select a payor from the list to view details</p>
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 text-center`}>
+<p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Select a payor to view details</p>
 </div>
 )}
 </div>
 </div>
+) : (
+// Directors Tab
+directorsLoading ? (
+<div className="text-center py-10">
+<p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading directory contacts...</p>
+</div>
+) : (
+<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div className="md:col-span-1 space-y-6">
+{Object.entries(groupedDirectors).length > 0 ? (
+Object.entries(groupedDirectors).map(([type, typeDirectors]) => (
+<div key={type} className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-hidden`}>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-4 py-3 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+<h2 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+{type} ({typeDirectors.length})
+</h2>
+</div>
+<ul className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+{typeDirectors.map(director => (
+<li
+key={director.id}
+className={`px-4 py-3 cursor-pointer entity-card ${
+selectedDirector && selectedDirector.id === director.id 
+? darkMode ? 'bg-blue-900 bg-opacity-50' : 'bg-blue-50'
+: darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+}`}
+onClick={() => setSelectedDirector(director)}
+>
+<div className="flex justify-between items-center">
+<div>
+<h3 className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{director.name}</h3>
+<p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{director.title}</p>
+</div>
+{isAdminAuthenticated && (
+<div className="flex space-x-1">
+<button
+className={`p-1 transition-colors ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'}`}
+onClick={(e) => {
+e.stopPropagation();
+handleEditDirector(director);
+}}
+>
+<Icon type="edit" />
+</button>
+<button
+className={`p-1 transition-colors ${darkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-800'}`}
+onClick={(e) => {
+e.stopPropagation();
+handleDeleteDirector(director.id);
+}}
+>
+<Icon type="trash" />
+</button>
+</div>
 )}
+</div>
+</li>
+))}
+</ul>
+</div>
+))
+) : (
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 text-center`}>
+<p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No directory contacts found matching your search.</p>
+</div>
+)}
+</div>
+
+<div className="md:col-span-2">
+{selectedDirector ? (
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm`}>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} px-6 py-4 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'} flex justify-between items-center`}>
+<h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedDirector.name}</h2>
+<div className="flex space-x-2">
+{isAdminAuthenticated && (
+<>
+<button
+className={`px-3 py-1.5 rounded-md flex items-center transition-colors ${darkMode ? 'bg-blue-700 text-blue-100 hover:bg-blue-600' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
+onClick={() => handleEditDirector(selectedDirector)}
+>
+<Icon type="edit" className="mr-1" /> Edit
+</button>
+<button
+className={`px-3 py-1.5 rounded-md flex items-center transition-colors ${darkMode ? 'bg-red-700 text-red-100 hover:bg-red-600' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+onClick={() => handleDeleteDirector(selectedDirector.id)}
+>
+<Icon type="trash" className="mr-1" /> Delete
+</button>
+</>
+)}
+</div>
+</div>
+<div className="p-6 space-y-6">
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md`}>
+<p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Title</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedDirector.title}</p>
+</div>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md`}>
+<p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Department</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedDirector.department || 'Not specified'}</p>
+</div>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md`}>
+<p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Type</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedDirector.type}</p>
+</div>
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded-md`}>
+<p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Email</p>
+<p className={`${darkMode ? 'text-gray-200' : 'text-gray-900'} break-all`}>{selectedDirector.email || 'Not specified'}</p>
+</div>
+</div>
+
+{selectedDirector.phoneNumbers && selectedDirector.phoneNumbers.length > 0 && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3`}>Phone Numbers</h3>
+<div className="space-y-2">
+{selectedDirector.phoneNumbers.map((phone, idx) => (
+<div key={idx} className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
+<div className="flex justify-between">
+<span className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{phone.label || 'Phone'}</span>
+<span className="font-mono text-blue-600">{phone.number}</span>
+</div>
+</div>
+))}
+</div>
+</div>
+)}
+
+{selectedDirector.extensions && selectedDirector.extensions.length > 0 && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-3`}>Extensions</h3>
+<div className="space-y-2">
+{selectedDirector.extensions.map((ext, idx) => (
+<div key={idx} className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md`}>
+<div className="flex justify-between">
+<span className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{ext.label || 'Ext'}</span>
+<span className="font-mono">{ext.number}</span>
+</div>
+</div>
+))}
+</div>
+</div>
+)}
+
+{selectedDirector.notes && (
+<div>
+<h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Notes</h3>
+<p className={`${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-50 text-gray-700'} p-4 rounded-md`}>{selectedDirector.notes}</p>
+</div>
+)}
+</div>
+</div>
+) : (
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm p-6 text-center`}>
+<p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Select a contact to view details</p>
+</div>
+)}
+</div>
+</div>
+)
+)}
+</main>
 
 {/* Admin Modal */}
 {showAdmin && (
@@ -2674,13 +2897,22 @@ setShowAdmin(false);
 setEntityToEdit(null);
 }} 
 />
-) : (
+) : activeTab === 'insurance' ? (
 <PayorForm 
 payor={payorToEdit} 
 onSave={handleSaveNewPayor} 
 onCancel={() => {
 setShowAdmin(false);
 setPayorToEdit(null);
+}} 
+/>
+) : (
+<DirectorForm 
+director={directorToEdit} 
+onSave={handleSaveNewDirector} 
+onCancel={() => {
+setShowAdmin(false);
+setDirectorToEdit(null);
 }} 
 />
 )}
@@ -2696,7 +2928,6 @@ onSubmit={handleAdminPasswordSubmit}
 title="Admin Access Required"
 message="Please enter the admin password to access management features."
 />
-</main>
 </div>
 );
 };
@@ -2705,7 +2936,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<EmergencyPortal />);
 </script>
 </body>
-    <footer>
-        <small>&copy; 2025 Kyle Butler/Haynes Ambulance. All rights reserved.</small>
-    </footer>
+<footer>
+<small>&copy; 2025 Haynes Communications Dispatch Reference Portal. All rights reserved.</small>
+</footer>
 </html>
