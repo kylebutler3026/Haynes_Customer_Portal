@@ -1256,6 +1256,181 @@ className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transit
 };
 
 // Entity Form Component
+// MVA Notification Form Component - ADD THIS
+const MVANotificationForm = ({ darkMode }) => {
+const [formData, setFormData] = useState({
+gs_time: '', gs_date: '', am_time: '', am_date: '', mp_time: '', mp_date: '',
+cm_time: '', cm_date: '', dc_time: '', dc_date: '', drm_time: '', drm_date: '',
+coo_time: '', coo_date: '', dispatcher_sig: '', dispatcher_date: '',
+supervisor_sig: '', supervisor_date: '', comm_mgr_sig: '', comm_mgr_date: ''
+});
+
+const handleInputChange = (field, value) => {
+setFormData(prev => ({ ...prev, [field]: value }));
+};
+
+const handlePrint = () => {
+window.print();
+};
+
+return (
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg overflow-hidden`}>
+<div className={`${darkMode ? 'bg-gradient-to-r from-gray-700 to-gray-800' : 'bg-gradient-to-r from-blue-900 to-blue-800'} text-white px-6 py-4 border-b ${darkMode ? 'border-gray-600' : 'border-gray-300'} flex justify-between items-center no-print`}>
+<div>
+<h2 className={`text-3xl font-bold`}>MVA Notification Cycle</h2>
+<p className="text-sm opacity-90">Motor Vehicle Accident Protocol & Procedures</p>
+</div>
+<button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-md hover:from-orange-600 hover:to-orange-700 transition-all font-medium shadow-lg">
+<Icon type="print" /> Print to PDF
+</button>
+</div>
+
+<div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+<div className={`${darkMode ? 'bg-gray-700 border-orange-500' : 'bg-blue-50 border-orange-500'} border-l-4 p-4 rounded`}>
+<h3 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-900'} mb-2`}>📋 PURPOSE</h3>
+<p className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} leading-relaxed`}>Ensure timely, accurate communication to all management levels when a company unit is involved in a motor vehicle accident and provide prompt care and continuity of service to any patients on board.</p>
+</div>
+
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded border ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+<h3 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-900'} mb-3`}>Notification Flow</h3>
+<div className="space-y-2 text-center text-sm">
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-2 rounded`}>INCIDENT OCCURS</div>
+<div className="text-orange-500 font-bold">↓</div>
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-2 rounded`}>Dispatcher Confirms Details & Notifies SSC</div>
+<div className="text-orange-500 font-bold">↓</div>
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-2 rounded`}>Dispatch SSC Sends Management Page</div>
+<div className="text-orange-500 font-bold">↓</div>
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-2 rounded`}>Dispatch SSC Notifies Management Chain</div>
+</div>
+</div>
+
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded border-l-4 border-orange-500`}>
+<h3 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-900'} mb-3`}>Step 1: Dispatcher Immediate Actions</h3>
+<div className="space-y-3 text-sm">
+<div>
+<h4 className={`font-semibold ${darkMode ? 'text-orange-400' : 'text-orange-600'} mb-2`}>Upon Notification of an MVA:</h4>
+<ul className={`space-y-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+<li><span className="text-orange-500 mr-2">✓</span> Confirm unit number</li>
+<li><span className="text-orange-500 mr-2">✓</span> Confirm location</li>
+<li><span className="text-orange-500 mr-2">✓</span> Confirm nature of incident</li>
+<li><span className="text-orange-500 mr-2">✓</span> Confirm injuries (if any)</li>
+<li><span className="text-orange-500 mr-2">✓</span> Confirm patient status (loaded/unloaded)</li>
+<li><span className="text-orange-500 mr-2">✓</span> <strong>Document time in incident log</strong></li>
+</ul>
+</div>
+<div>
+<h4 className={`font-semibold ${darkMode ? 'text-orange-400' : 'text-orange-600'} mb-2`}>If Unit is Patient-Loaded:</h4>
+<ul className={`space-y-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+<li><span className="text-orange-500 mr-2">✓</span> Dispatch backup unit to retrieve patient</li>
+<li><span className="text-orange-500 mr-2">✓</span> Dispatch assessment unit for all parties</li>
+<li><span className="text-orange-500 mr-2">✓</span> Notify on-shift Dispatch SSC</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded border-l-4 border-orange-500`}>
+<h3 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-900'} mb-3`}>Step 2: Management Page by Dispatch SSC</h3>
+<p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-3`}><strong>Send Immediately Following Initial Notification</strong></p>
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-yellow-50'} p-3 rounded mb-3 border-l-4 border-yellow-500 text-sm`}>
+<h4 className={`font-semibold ${darkMode ? 'text-yellow-300' : 'text-yellow-700'} mb-2`}>RECIPIENTS:</h4>
+<ul className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+<li>• Entire Management Page</li>
+<li>• On-Shift Ground Supervisor</li>
+<li>• Area Manager</li>
+<li>• Jerry Plyler (Director of Risk Management)</li>
+</ul>
+</div>
+<div className={`${darkMode ? 'bg-gray-800' : 'bg-yellow-50'} p-3 rounded border-l-4 border-yellow-500 text-sm`}>
+<h4 className={`font-semibold ${darkMode ? 'text-yellow-300' : 'text-yellow-700'} mb-2`}>INCLUDE IN PAGE:</h4>
+<ul className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+<li>• Unit number involved</li>
+<li>• Location of MVA</li>
+<li>• Patient status (loaded/unloaded)</li>
+<li>• Any known injuries or scene hazards</li>
+</ul>
+</div>
+</div>
+
+<div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-4 rounded border-l-4 border-orange-500`}>
+<h3 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-900'} mb-3`}>Step 3: Dispatch SSC Notification Chain</h3>
+<p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-3`}>Upon being informed by dispatcher, notify in order:</p>
+<ol className={`space-y-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'} ml-4 list-decimal`}>
+<li><strong>Communications Manager</strong></li>
+<li><strong>Director of Communications</strong></li>
+<li><strong>Director of Risk Management</strong></li>
+<li><strong>Chief Operating Officer (COO)</strong></li>
+</ol>
+</div>
+
+<div>
+<h3 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-900'} mb-4 border-b-2 border-orange-500 pb-2`}>📋 Documentation Log</h3>
+<div className="overflow-x-auto">
+<table className={`w-full border-collapse text-sm`}>
+<thead>
+<tr className={`${darkMode ? 'bg-gray-700' : 'bg-blue-900'} text-white`}>
+<th className="border px-2 py-2 text-left">Step</th>
+<th className="border px-2 py-2 text-left">Time</th>
+<th className="border px-2 py-2 text-left">Date</th>
+<th className="border px-2 py-2 text-left">Method</th>
+<th className="border px-2 py-2 text-left">Notified By</th>
+<th className="border px-2 py-2 text-left">Ack</th>
+</tr>
+</thead>
+<tbody>
+{[
+{ step: 'Dispatcher → Ground Supervisor', prefix: 'gs' },
+{ step: 'Dispatcher → Area Manager', prefix: 'am' },
+{ step: 'Management Page (by SSC)', prefix: 'mp' },
+{ step: 'SSC → Comm Manager', prefix: 'cm' },
+{ step: 'SSC → Dir. Communications', prefix: 'dc' },
+{ step: 'SSC → Dir. Risk Management', prefix: 'drm' },
+{ step: 'SSC → COO', prefix: 'coo' }
+].map((row, idx) => (
+<tr key={idx} className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'} border`}>
+<td className="border px-2 py-2 text-xs">{row.step}</td>
+<td className="border px-2 py-2"><input type="time" value={formData[`${row.prefix}_time`]} onChange={(e) => handleInputChange(`${row.prefix}_time`, e.target.value)} className={`w-full text-xs ${darkMode ? 'bg-gray-700 border-gray-600' : ''}`} /></td>
+<td className="border px-2 py-2"><input type="date" value={formData[`${row.prefix}_date`]} onChange={(e) => handleInputChange(`${row.prefix}_date`, e.target.value)} className={`w-full text-xs ${darkMode ? 'bg-gray-700 border-gray-600' : ''}`} /></td>
+<td className="border px-2 py-2 text-xs">Radio/Phone</td>
+<td className="border px-2 py-2"><input type="text" placeholder="Name" value={formData[`${row.prefix}_notified_by`] || ''} onChange={(e) => handleInputChange(`${row.prefix}_notified_by`, e.target.value)} className={`w-full text-xs ${darkMode ? 'bg-gray-700 border-gray-600' : ''}`} /></td>
+<td className="border px-2 py-2"><input type="text" placeholder="Y/N" value={formData[`${row.prefix}_ack`] || ''} onChange={(e) => handleInputChange(`${row.prefix}_ack`, e.target.value)} className={`w-full text-xs ${darkMode ? 'bg-gray-700 border-gray-600' : ''}`} style={{maxWidth: '40px'}} /></td>
+</tr>
+))}
+</tbody>
+</table>
+</div>
+</div>
+
+<div className={`bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 rounded shadow-lg`}>
+<h3 className="font-bold text-lg mb-3">⏰ Important Reminders</h3>
+<ul className="space-y-2 text-sm">
+<li><strong>•</strong> All times in <strong>Central Time</strong></li>
+<li><strong>•</strong> Submit within <strong>24 hours</strong></li>
+<li><strong>•</strong> Ensures compliance and accurate tracking</li>
+</ul>
+</div>
+
+<div>
+<h3 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-900'} mb-4 border-b-2 border-orange-500 pb-2`}>✍️ Authorization & Sign-Off</h3>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+{[
+{ label: 'Dispatcher Signature', prefix: 'dispatcher' },
+{ label: 'Dispatch Supervisor Signature', prefix: 'supervisor' },
+{ label: 'Communications Manager Signature', prefix: 'comm_mgr' }
+].map((sig, idx) => (
+<div key={idx}>
+<label className={`block font-medium text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>{sig.label}</label>
+<input type="text" placeholder="Sign here" value={formData[`${sig.prefix}_sig`]} onChange={(e) => handleInputChange(`${sig.prefix}_sig`, e.target.value)} className={`w-full mb-3 border-b-2 border-orange-500 py-1 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-black'}`} />
+<label className={`block font-medium text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-2`}>Date</label>
+<input type="date" value={formData[`${sig.prefix}_date`]} onChange={(e) => handleInputChange(`${sig.prefix}_date`, e.target.value)} className={`w-full border-b-2 border-orange-500 py-1 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-black'}`} />
+</div>
+))}
+</div>
+</div>
+</div>
+</div>
+);
+};
 const EntityForm = ({ entity, onSave, onCancel }) => {
 const [formData, setFormData] = useState({
 id: entity?.id || null,
@@ -2265,6 +2440,22 @@ activeTab === 'directors'
 >
 Directory/Contacts ({directors.length})
 </button>
+<button
+onClick={() => {
+setActiveTab('mva');
+setSelectedEntity(null);
+setSelectedPayor(null);
+setSelectedDirector(null);
+setSearchTerm('');
+}}
+className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+activeTab === 'mva'
+? `border-orange-500 ${darkMode ? 'text-orange-400' : 'text-orange-600'}`
+: `border-transparent ${darkMode ? 'text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'}`
+}`}
+>
+MVA Notification
+</button>
 </nav>
 </div>
 </div>
@@ -2318,6 +2509,12 @@ Refresh
 </div>
 </div>
 
+{/* MVA Notification Tab */}
+{activeTab === 'mva' ? (
+<MVANotificationForm darkMode={darkMode} />
+) : null}
+
+{/* Entity Display */}
 {/* Entity Display */}
 {activeTab === 'entities' ? (
 loading ? (
