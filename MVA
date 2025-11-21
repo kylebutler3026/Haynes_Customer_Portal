@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<body>
+    <div class="navbar">
+        <h1>🚑 Haynes Ambulance Service</h1>
+        <div class="navbar-right">
+            <div class="navbar-icon">⚠️</div>
+            <button class="print-btn" onclick="window.print()">🖨️ Print to PDF</button>
+        </div>
+    </div>
+<div class="container">
+    <div class="header">
+        <h1>MVA Notification Cycle</h1>
+        <p>Motor Vehicle Accident Protocol & Procedures</p>
+    </div>
+
+    <div class="purpose-box">
+        <h2>📋 Purpose</h2>
+        <p>Ensure timely, accurate communication to all management levels when a company unit is involved in a motor vehicle accident and provide prompt care and continuity of service to any patients on board.</p>
+    </div>
+
+    <div class="flow-diagram">
+        <h3>Notification Flow</h3>
+        <div class="flow-step">INCIDENT OCCURS</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step">Dispatcher Confirms Details & Notifies SSC</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step">Dispatch SSC Sends Management Page</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step">Dispatch SSC Notifies Management Chain</div>
+    </div>
+
+    <div class="sections-grid">
+        <div class="card">
+            <h3>Step 1: Dispatcher Immediate Actions</h3>
+            
+            <h4>Upon Notification of an MVA:</h4>
+            <ul>
+                <li><span class="checkmark">✓</span> Confirm unit number</li>
+                <li><span class="checkmark">✓</span> Confirm location</li>
+                <li><span class="checkmark">✓</span> Confirm nature of incident</li>
+                <li><span class="checkmark">✓</span> Confirm injuries (if any)</li>
+                <li><span class="checkmark">✓</span> Confirm patient status (loaded/unloaded)</li>
+                <li><span class="checkmark">✓</span> <strong>Document time in incident log</strong></li>
+            </ul>
+
+            <h4>If Unit is Patient-Loaded:</h4>
+            <ul>
+                <li><span class="checkmark">✓</span> Dispatch backup unit to retrieve patient</li>
+                <li><span class="checkmark">✓</span> Dispatch assessment unit for all parties</li>
+                <li><span class="checkmark">✓</span> Notify on-shift Dispatch SSC</li>
+            </ul>
+            <p style="font-size: 13px; color: #666; margin-top: 10px;"><em>Note: If no SSC on duty, dispatcher completes all remaining tasks</em></p>
+        </div>
+
+        <div class="card">
+            <h3>Step 2: Management Page</h3>
+            <p style="color: #666; margin-bottom: 15px;">Send <strong>immediately</strong> following initial notification</p>
+
+            <div class="recipients-list">
+                <strong>Recipients:</strong>
+                <p>• Entire Management Page</p>
+                <p>• On-Shift Ground Supervisor</p>
+                <p>• Area Manager</p>
+                <p>• Jerry Plyler (Director of Risk Management)</p>
+            </div>
+
+            <div class="recipients-list">
+                <strong>Include in Page:</strong>
+                <p>• Unit number involved</p>
+                <p>• Location of MVA</p>
+                <p>• Patient status (loaded/unloaded)</p>
+                <p>• Any injuries or scene hazards</p>
+            </div>
+
+            <p style="font-size: 13px; color: #666; margin-top: 15px;"><strong>Document:</strong> Record time and method in incident log</p>
+        </div>
+
+        <div class="card">
+            <h3>Step 3: SSC Notification Chain</h3>
+            <p style="color: #666; margin-bottom: 15px;">Upon being informed by dispatcher, notify in order:</p>
+
+            <div class="timeline">
+                <ol>
+                    <li><strong>Communications Manager</strong></li>
+                    <li><strong>Director of Communications</strong></li>
+                    <li><strong>Director of Risk Management</strong></li>
+                    <li><strong>Chief Operating Officer (COO)</strong></li>
+                </ol>
+            </div>
+
+            <p style="font-size: 13px; color: #666;"><strong>Documentation:</strong> Record all notifications in MVA Notification Log including date/time, method, and person notified</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📋 Documentation Log</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Step</th>
+                    <th>Time</th>
+                    <th>Date</th>
+                    <th>Method</th>
+                    <th>Notified By</th>
+                    <th>Ack</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Dispatcher → Ground Supervisor</td>
+                    <td><input type="time" name="gs_time"></td>
+                    <td><input type="date" name="gs_date"></td>
+                    <td>Radio/Phone</td>
+                    <td><input type="text" name="gs_notified_by" placeholder="Name"></td>
+                    <td><input type="text" name="gs_ack" placeholder="Yes/No"></td>
+                </tr>
+                <tr>
+                    <td>Dispatcher → Area Manager</td>
+                    <td><input type="time" name="am_time"></td>
+                    <td><input type="date" name="am_date"></td>
+                    <td>Radio/Phone</td>
+                    <td><input type="text" name="am_notified_by" placeholder="Name"></td>
+                    <td><input type="text" name="am_ack" placeholder="Yes/No"></td>
+                </tr>
+                <tr>
+                    <td>Management Page (by SSC)</td>
+                    <td><input type="time" name="mp_time"></td>
+                    <td><input type="date" name="mp_date"></td>
+                    <td>Radio/Phone</td>
+                    <td><input type="text" name="mp_notified_by" placeholder="Name"></td>
+                    <td><input type="text" name="mp_ack" placeholder="Yes/No"></td>
+                </tr>
+                <tr>
+                    <td>SSC → Comm Manager</td>
+                    <td><input type="time" name="cm_time"></td>
+                    <td><input type="date" name="cm_date"></td>
+                    <td>Radio/Phone</td>
+                    <td><input type="text" name="cm_notified_by" placeholder="Name"></td>
+                    <td><input type="text" name="cm_ack" placeholder="Yes/No"></td>
+                </tr>
+                <tr>
+                    <td>SSC → Dir. Communications</td>
+                    <td><input type="time" name="dc_time"></td>
+                    <td><input type="date" name="dc_date"></td>
+                    <td>Radio/Phone</td>
+                    <td><input type="text" name="dc_notified_by" placeholder="Name"></td>
+                    <td><input type="text" name="dc_ack" placeholder="Yes/No"></td>
+                </tr>
+                <tr>
+                    <td>SSC → Dir. Risk Management</td>
+                    <td><input type="time" name="drm_time"></td>
+                    <td><input type="date" name="drm_date"></td>
+                    <td>Radio/Phone</td>
+                    <td><input type="text" name="drm_notified_by" placeholder="Name"></td>
+                    <td><input type="text" name="drm_ack" placeholder="Yes/No"></td>
+                </tr>
+                <tr>
+                    <td>SSC → COO</td>
+                    <td><input type="time" name="coo_time"></td>
+                    <td><input type="date" name="coo_date"></td>
+                    <td>Radio/Phone</td>
+                    <td><input type="text" name="coo_notified_by" placeholder="Name"></td>
+                    <td><input type="text" name="coo_ack" placeholder="Yes/No"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="warning-box">
+        <h3>⏰ Important Reminders</h3>
+        <ul style="margin-left: 20px; margin-top: 15px;">
+            <li style="margin-bottom: 8px;">All times must be recorded in <strong>Central Time</strong></li>
+            <li style="margin-bottom: 8px;">MVA Notification Log must be submitted to Communications Manager <strong>within 24 hours</strong></li>
+            <li>Prompt documentation ensures compliance and accurate incident tracking</li>
+        </ul>
+    </div>
+
+    <div class="sign-off-section">
+        <h3>✍️ Authorization & Sign-Off</h3>
+        
+        <div class="signature-line">
+            <label for="dispatcher_sig">Dispatcher Signature:</label>
+            <input type="text" id="dispatcher_sig" name="dispatcher_sig" placeholder="Sign here">
+        </div>
+        <div class="signature-line">
+            <label for="dispatcher_date">Date:</label>
+            <input type="date" id="dispatcher_date" name="dispatcher_date">
+        </div>
+
+        <div class="signature-line">
+            <label for="supervisor_sig">Dispatch Supervisor Signature:</label>
+            <input type="text" id="supervisor_sig" name="supervisor_sig" placeholder="Sign here">
+        </div>
+        <div class="signature-line">
+            <label for="supervisor_date">Date:</label>
+            <input type="date" id="supervisor_date" name="supervisor_date">
+        </div>
+
+        <div class="signature-line">
+            <label for="comm_mgr_sig">Communications Manager Signature:</label>
+            <input type="text" id="comm_mgr_sig" name="comm_mgr_sig" placeholder="Sign here">
+        </div>
+        <div class="signature-line">
+            <label for="comm_mgr_date">Date:</label>
+            <input type="date" id="comm_mgr_date" name="comm_mgr_date">
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    <p>&copy; 2024 Haynes Ambulance Service | MVA Notification Protocol v1.0</p>
+</div>
+</body>
+</html>
+</html>
